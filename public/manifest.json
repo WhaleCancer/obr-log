@@ -1,0 +1,16 @@
+{
+    "name": "Star Trek Character Sheet",
+    "version": "1.0.0",
+    "manifest_version": 1,
+    "icon": "/star-trek-character-sheet/icon.svg",
+    "author": "WhaleCancer",
+    "description": "Star Trek character sheet for Owlbear Rodeo.",
+    "homepage_url": "https://github.com/WhaleCancer/star-trek-character-sheet",
+    "action": {
+      "title": "Star Trek Character Sheet",
+      "icon": "/star-trek-character-sheet/icon.svg",
+      "popover": "/star-trek-character-sheet/",
+      "height": 1200,
+      "width": 700
+    }
+  }
