@@ -26,21 +26,6 @@
     // Exports
     export let sheet:AFFSheet;
     
-    // Helper function to parse current SKILL value from Characteristics
-    function getCurrentSkill(): number {
-        const characteristicsSection = sheet.sections.find(s => s.name === "Characteristics");
-        if (!characteristicsSection) return 0;
-        
-        const skillStat = characteristicsSection.stats.find(s => s.name === "SKILL");
-        if (!skillStat) return 0;
-        
-        // Parse value format: "initial/current"
-        const parts = skillStat.value.split('/');
-        const current = parts[1]?.trim() || parts[0]?.trim() || '0';
-        const num = parseInt(current, 10);
-        return isNaN(num) ? 0 : num;
-    }
-    
     // Split sections: Character Info first, then Special Skills, then Characteristics, then rest
     $: characteristicsSection = sheet.sections.find(s => s.name === "Characteristics");
     $: characterInfoSection = sheet.sections.find(s => s.name === "Character Info");
@@ -55,7 +40,14 @@
     $: otherSections = sheet.sections.filter(s => 
         s.name === "Talents" || s.name === "Drawbacks"
     );
-    $: currentSkill = getCurrentSkill();
+    // Reactive statement to update currentSkill whenever the SKILL stat value changes
+    $: skillValue = characteristicsSection?.stats?.find(s => s.name === "SKILL")?.value || "0/0";
+    $: currentSkill = (() => {
+        const parts = skillValue.split('/');
+        const current = parts[1]?.trim() || parts[0]?.trim() || '0';
+        const num = parseInt(current, 10);
+        return isNaN(num) ? 0 : num;
+    })();
     
     function toggleEditing(){ 
       $editing = !$editing;

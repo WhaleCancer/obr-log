@@ -33,18 +33,31 @@
         const element = event.target as HTMLElement;
         const newValue = element.innerText.trim();
         const parsed = parseValue(stat.value);
-        stat.value = `${newValue}/${parsed.current}`;
-        // Force reactivity update by creating new array reference
-        stats = [...stats];
+        const newStatValue = `${newValue}/${parsed.current}`;
+        
+        // Update the stat object immutably
+        const updatedStats = stats.map(s => 
+            s.id === stat.id 
+                ? { ...s, value: newStatValue }
+                : s
+        );
+        stats = updatedStats;
     }
     
     function handleCurrentChange(stat: AFFSheetStats, event: Event) {
         const element = event.target as HTMLElement;
         const newValue = element.innerText.trim();
         const parsed = parseValue(stat.value);
-        stat.value = `${parsed.initial}/${newValue}`;
-        // Force reactivity update by creating new array reference
-        stats = [...stats];
+        const newStatValue = `${parsed.initial}/${newValue}`;
+        
+        // Update the stat object immutably to trigger reactivity
+        const updatedStats = stats.map(s => 
+            s.id === stat.id 
+                ? { ...s, value: newStatValue }
+                : s
+        );
+        // Update stats array immutably to ensure reactivity is triggered
+        stats = updatedStats;
     }
     
     function handleKeydown(e: KeyboardEvent) {
