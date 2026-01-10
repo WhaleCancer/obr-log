@@ -2,6 +2,7 @@
     // Import stores
     import { editing } from "../stores";
     import { currentPlayerId, viewingPlayerId } from "../services/OBRHelper";
+    import type { AFFSheetStats } from '../types/sheet.type';
 
     // Export
     export let stats;
@@ -28,18 +29,28 @@
     });
     
     // Helper function to update value when initial or current changes
-    function handleInitialChange(stat, newValue: string) {
+    function handleInitialChange(stat: AFFSheetStats, event: Event) {
+        const element = event.target as HTMLElement;
+        const newValue = element.innerText.trim();
         const parsed = parseValue(stat.value);
-        stat.value = `${newValue.trim()}/${parsed.current}`;
-        // Force reactivity update
-        stats = stats;
+        stat.value = `${newValue}/${parsed.current}`;
+        // Force reactivity update by creating new array reference
+        stats = [...stats];
     }
     
-    function handleCurrentChange(stat, newValue: string) {
+    function handleCurrentChange(stat: AFFSheetStats, event: Event) {
+        const element = event.target as HTMLElement;
+        const newValue = element.innerText.trim();
         const parsed = parseValue(stat.value);
-        stat.value = `${parsed.initial}/${newValue.trim()}`;
-        // Force reactivity update
-        stats = stats;
+        stat.value = `${parsed.initial}/${newValue}`;
+        // Force reactivity update by creating new array reference
+        stats = [...stats];
+    }
+    
+    function handleKeydown(e: KeyboardEvent) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+        }
     }
 </script>
 
@@ -63,8 +74,8 @@
                 {#if editable}
                 <td class="stat-value" 
                     contenteditable="true" 
-                    on:blur={(e) => handleInitialChange(stat, e.target.innerText)}
-                    on:keydown={(e) => e.key === 'Enter' && e.preventDefault()}>
+                    on:blur={(e) => handleInitialChange(stat, e)}
+                    on:keydown={handleKeydown}>
                     {initial}
                 </td>
                 {:else}
@@ -73,8 +84,8 @@
                 {#if editable}
                 <td class="stat-value" 
                     contenteditable="true" 
-                    on:blur={(e) => handleCurrentChange(stat, e.target.innerText)}
-                    on:keydown={(e) => e.key === 'Enter' && e.preventDefault()}>
+                    on:blur={(e) => handleCurrentChange(stat, e)}
+                    on:keydown={handleKeydown}>
                     {current}
                 </td>
                 {:else}
