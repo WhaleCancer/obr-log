@@ -10,6 +10,23 @@
 
     $: editable = $currentPlayerId === $viewingPlayerId;
     
+    // Skill descriptions for tooltips
+    const skillDescriptions: Record<string, string> = {
+        "Armor": "The introduction of more and more powerful weapons has in turn driven the development of better and better armor to protect the soldiers and mercenaries of the galaxy. This armor ranges from a simple armored vest to full powered body armor weighing a ton or more. This special skill represents training in wearing and using this armor effectively.",
+        "Brawling": "It can be a nightmare when you've lost your gun or dropped your laserblade, and when that happens it's down to good 'ol fists and kicks. Use the Brawling special skill when involved in any type of hand-to-hand combat, whether unarmed or wielding a makeshift weapon.",
+        "Firearms - Heavy": "Conflict is inevitable, and sometimes it gets big, so this special skill covers the use of large weapons, such as rocket launchers, heavy machine guns, heavy lasers and anything else that inflicts a lot of damage and needs to be hefted by the user due to it's size and weight. Basically, if the weapon is bigger than you are, it's a heavy weapon.",
+        "Firearms - Light": "Covering pistols, rifles and launchers of all kinds, the Firearms - Light special skill gives the Hero a much better chance of bulls-eyeing that target. If it shoots needles, bullets, balls of yellow light or beams of explosive energy, and you can hold it in one hand or put it to your shoulder, then this skill improves your chances of hitting.",
+        "Firearms - Vehicle": "Not all weapons can be hefted, some have to be mounted to a vehicle, and this skill allows a Hero to use them. Whether it's a cannon mounted to a truck in a post-apocalyptic wasteland, a weapon under the wings of a scramjet fighter or a turret on a base, this skill gives you a much better chance.",
+        "Melee Weapons": "Fists and blasters are fine, but sometimes you just want to save your ammo or the skin of your knuckles and just bash someone over the head. The Melee special skill gives Heroes a better chance of landing a landing a blow with an iron pipe, a sword or a laserblade.",
+        "Starship Gunnery": "Firing a weapon in the vastness of space at a small craft as it traveling very very fast takes some skill and training to be successful. And this special skill is it. Launching missiles or firing a ship's laser both use this special skill.",
+        "Thrown": "If it's not too heavy, and you can get some range, you can throw it. The Thrown skill is for throwing rocks, chairs, knives, grenades, and anything that comes to hand with an increased degree of accuracy."
+    };
+    
+    // Helper function to get description for a skill
+    function getSkillDescription(skillName: string): string {
+        return skillDescriptions[skillName] || "";
+    }
+    
     // Helper function to parse number from string value
     function parseNumber(value: string): number {
         const num = parseInt(value.trim() || '0', 10);
@@ -20,6 +37,33 @@
     function calculateTotal(ranksValue: string): number {
         const ranks = parseNumber(ranksValue);
         return ranks + currentSkill;
+    }
+    
+    // Track which tooltip is shown
+    let hoveredSkill: string | null = null;
+    let tooltipElement: HTMLElement | null = null;
+    let tooltipPosition = { x: 0, y: 0 };
+    
+    function handleMouseEnter(event: MouseEvent, skillName: string) {
+        hoveredSkill = skillName;
+        const target = event.currentTarget as HTMLElement;
+        tooltipElement = target;
+        updateTooltipPosition(event);
+    }
+    
+    function handleMouseMove(event: MouseEvent) {
+        if (hoveredSkill) {
+            updateTooltipPosition(event);
+        }
+    }
+    
+    function updateTooltipPosition(event: MouseEvent) {
+        tooltipPosition = { x: event.clientX, y: event.clientY };
+    }
+    
+    function handleMouseLeave() {
+        hoveredSkill = null;
+        tooltipElement = null;
     }
 </script>
 
@@ -39,9 +83,17 @@
             {@const isEven = index % 2 === 0}
             <tr class:has-ranks={hasRanks} class:even-row={isEven} class:odd-row={!isEven}>
                 {#if editable && $editing}
-                <td class="skill-name" contenteditable="true" bind:innerText={stat.name}>{stat.name}</td>
+                <td class="skill-name" 
+                    contenteditable="true" 
+                    bind:innerText={stat.name}
+                    on:mouseenter={(e) => handleMouseEnter(e, stat.name)}
+                    on:mouseleave={handleMouseLeave}
+                    on:mousemove={handleMouseMove}>{stat.name}</td>
                 {:else}
-                <td class="skill-name">{stat.name}</td>
+                <td class="skill-name tooltip-trigger"
+                    on:mouseenter={(e) => handleMouseEnter(e, stat.name)}
+                    on:mouseleave={handleMouseLeave}
+                    on:mousemove={handleMouseMove}>{stat.name}</td>
                 {/if}
                 {#if editable}
                 <td class="skill-value ranks" 
@@ -59,6 +111,13 @@
         </tbody>
     </table>
 </div>
+
+{#if hoveredSkill && getSkillDescription(hoveredSkill)}
+    <div class="tooltip" style="left: {tooltipPosition.x}px; top: {tooltipPosition.y}px">
+        <div class="tooltip-title">{hoveredSkill}</div>
+        <div class="tooltip-content">{getSkillDescription(hoveredSkill)}</div>
+    </div>
+{/if}
 
 <style lang="scss">
     .combat-skills-container {
@@ -164,5 +223,49 @@
     .skill-value.ranks:hover {
         color: rgb(var(--accent));
         transition: color 0.2s ease;
+    }
+
+    .tooltip-trigger {
+        cursor: help;
+    }
+
+    .tooltip {
+        position: fixed;
+        z-index: 10000;
+        max-width: 300px;
+        padding: 0.75rem 1rem;
+        background: rgba(20, 20, 30, 0.98);
+        border: 2px solid rgb(var(--accent));
+        border-radius: 0.5rem;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+        pointer-events: none;
+        transform: translate(-50%, calc(-100% - 10px));
+        margin-left: 10px;
+        margin-top: -10px;
+    }
+
+    .tooltip-title {
+        font-weight: 700;
+        font-size: 1rem;
+        color: rgb(var(--accent));
+        margin-bottom: 0.5rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    .tooltip-content {
+        font-size: 0.875rem;
+        color: rgba(var(--primary), 0.9);
+        line-height: 1.5;
+    }
+
+    .tooltip::after {
+        content: '';
+        position: absolute;
+        bottom: -8px;
+        left: 50%;
+        transform: translateX(-50%);
+        border: 8px solid transparent;
+        border-top-color: rgb(var(--accent));
     }
 </style>
