@@ -182,82 +182,137 @@ const initialSheet = {
         stats: [
           {
             id: 1,
-            name: "Animal Lore",
+            name: "Animal Skills",
             value: "0"
           },
           {
             id: 2,
-            name: "Bargain",
+            name: "Archaeology",
             value: "0"
           },
           {
             id: 3,
-            name: "City Lore",
+            name: "Astronavigation",
             value: "0"
           },
           {
             id: 4,
-            name: "Con",
+            name: "Bargain",
             value: "0"
           },
           {
             id: 5,
-            name: "Crafting",
+            name: "Biology",
             value: "0"
           },
           {
             id: 6,
-            name: "Etiquette",
+            name: "Botany",
             value: "0"
           },
           {
             id: 7,
-            name: "Evaluate",
+            name: "Bureaucracy",
             value: "0"
           },
           {
             id: 8,
-            name: "Fishing",
+            name: "Chemistry",
             value: "0"
           },
           {
             id: 9,
-            name: "Healing",
+            name: "Communications",
             value: "0"
           },
           {
             id: 10,
-            name: "Hunting",
+            name: "Computers",
             value: "0"
           },
           {
             id: 11,
-            name: "Languages",
+            name: "Ecology",
             value: "0"
           },
           {
             id: 12,
-            name: "Law",
+            name: "Engineering",
             value: "0"
           },
           {
             id: 13,
-            name: "Leadership",
+            name: "Etiquette",
             value: "0"
           },
           {
             id: 14,
-            name: "Religion Lore",
+            name: "Evaluate",
             value: "0"
           },
           {
             id: 15,
-            name: "Secret Signs",
+            name: "Geology",
             value: "0"
           },
           {
             id: 16,
-            name: "World Lore",
+            name: "Languages",
+            value: "0"
+          },
+          {
+            id: 17,
+            name: "Law",
+            value: "0"
+          },
+          {
+            id: 18,
+            name: "Leadership",
+            value: "0"
+          },
+          {
+            id: 19,
+            name: "Medicine",
+            value: "0"
+          },
+          {
+            id: 20,
+            name: "Meteorology",
+            value: "0"
+          },
+          {
+            id: 21,
+            name: "Oceanography",
+            value: "0"
+          },
+          {
+            id: 22,
+            name: "Physics",
+            value: "0"
+          },
+          {
+            id: 23,
+            name: "Planetary Navigation",
+            value: "0"
+          },
+          {
+            id: 24,
+            name: "Sensors",
+            value: "0"
+          },
+          {
+            id: 25,
+            name: "Survival",
+            value: "0"
+          },
+          {
+            id: 26,
+            name: "Trade Knowledge",
+            value: "0"
+          },
+          {
+            id: 27,
+            name: "Zoology",
             value: "0"
           }
         ]
