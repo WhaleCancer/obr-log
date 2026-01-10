@@ -7,6 +7,7 @@
     import Section from './Section.svelte';
     import CharacterInfo from './CharacterInfo.svelte';
     import CombatSpecialSkills from './CombatSpecialSkills.svelte';
+    import MovementSpecialSkills from './MovementSpecialSkills.svelte';
     import RemoveSection from './RemoveSection.svelte';
     import { currentPlayerId, viewingPlayerId } from "../services/OBRHelper";
     import type { AFFSheet } from '../types/sheet.type';
@@ -30,12 +31,14 @@
     $: characteristicsSection = sheet.sections.find(s => s.name === "Characteristics");
     $: characterInfoSection = sheet.sections.find(s => s.name === "Character Info");
     $: combatSpecialSkillsSection = sheet.sections.find(s => s.name === "Combat Special Skills");
+    $: movementSpecialSkillsSection = sheet.sections.find(s => s.name === "Movement Special Skills");
     $: specialSkillsSections = sheet.sections.filter(s => 
         s.name !== "Characteristics" && 
         s.name !== "Character Info" && 
         s.name !== "Talents" && 
         s.name !== "Drawbacks" &&
-        s.name !== "Combat Special Skills"
+        s.name !== "Combat Special Skills" &&
+        s.name !== "Movement Special Skills"
     );
     $: otherSections = sheet.sections.filter(s => 
         s.name === "Talents" || s.name === "Drawbacks"
@@ -88,10 +91,32 @@
     <!-- Combat Special Skills Section (Special handling) -->
     {#if combatSpecialSkillsSection}
         <div class="combat-skills-section-wrapper">
+            {#if editable && $editing}
+                <h2 bind:innerText={combatSpecialSkillsSection.name} contenteditable="true">{combatSpecialSkillsSection.name}</h2>
+            {:else}
+                <h2>{combatSpecialSkillsSection.name}</h2>
+            {/if}
             <CombatSpecialSkills bind:stats={combatSpecialSkillsSection.stats} currentSkill={currentSkill}/>
             {#if editable && $editing}
                 <div class="remove-section-container">
                     <RemoveSection bind:section={combatSpecialSkillsSection} on:removeSection={e => removeSection(e.detail)}/>
+                </div>
+            {/if}
+        </div>
+    {/if}
+    
+    <!-- Movement Special Skills Section (Special handling) -->
+    {#if movementSpecialSkillsSection}
+        <div class="movement-skills-section-wrapper">
+            {#if editable && $editing}
+                <h2 bind:innerText={movementSpecialSkillsSection.name} contenteditable="true">{movementSpecialSkillsSection.name}</h2>
+            {:else}
+                <h2>{movementSpecialSkillsSection.name}</h2>
+            {/if}
+            <MovementSpecialSkills bind:stats={movementSpecialSkillsSection.stats} currentSkill={currentSkill}/>
+            {#if editable && $editing}
+                <div class="remove-section-container">
+                    <RemoveSection bind:section={movementSpecialSkillsSection} on:removeSection={e => removeSection(e.detail)}/>
                 </div>
             {/if}
         </div>
@@ -137,6 +162,17 @@
     .combat-skills-section-wrapper {
         margin: 1rem 0;
         width: 100%;
+    }
+    .movement-skills-section-wrapper {
+        margin: 1rem 0;
+        width: 100%;
+    }
+    h2 {
+        text-shadow: var(--shadow);
+        color: rgb(var(--accent));
+        font-size: 1.2rem;
+        margin-top: 0;
+        margin-bottom: 0.5rem;
     }
     @media only screen and (min-width: 33.75em) {
         div {
