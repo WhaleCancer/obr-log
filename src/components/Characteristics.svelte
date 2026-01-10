@@ -100,11 +100,6 @@
 <style lang="scss">
     .characteristics-container {
         padding: 1rem 0.5rem;
-        border-width: 0.15rem;
-        border-style: solid;
-        border-image: 
-            linear-gradient(to bottom, rgba(0, 0, 0, 0), rgb(var(--accent)), rgba(0, 0, 0, 0)) 1 100%;
-        border-right: none;
         margin: 1rem 0;
         width: 100%;
     }
