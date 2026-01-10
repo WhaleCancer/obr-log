@@ -27,7 +27,7 @@
     <table class="combat-skills-table">
         <thead>
             <tr>
-                <th class="header-cell header-left">SPECIAL SKILL</th>
+                <th class="header-cell header-left">COMBAT SPECIAL SKILL</th>
                 <th class="header-cell">Ranks</th>
                 <th class="header-cell">CURRENT SKILL</th>
                 <th class="header-cell">Total</th>

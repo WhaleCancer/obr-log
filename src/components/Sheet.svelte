@@ -88,11 +88,6 @@
     <!-- Combat Special Skills Section (Special handling) -->
     {#if combatSpecialSkillsSection}
         <div class="combat-skills-section-wrapper">
-            {#if editable && $editing}
-                <h2 bind:innerText={combatSpecialSkillsSection.name} contenteditable="true">{combatSpecialSkillsSection.name}</h2>
-            {:else}
-                <h2>{combatSpecialSkillsSection.name}</h2>
-            {/if}
             <CombatSpecialSkills bind:stats={combatSpecialSkillsSection.stats} currentSkill={currentSkill}/>
             {#if editable && $editing}
                 <div class="remove-section-container">
@@ -142,13 +137,6 @@
     .combat-skills-section-wrapper {
         margin: 1rem 0;
         width: 100%;
-    }
-    .combat-skills-section-wrapper h2 {
-        text-shadow: var(--shadow);
-        color: rgb(var(--accent));
-        font-size: 1.2rem;
-        margin-top: 0;
-        margin-bottom: 0.5rem;
     }
     @media only screen and (min-width: 33.75em) {
         div {
