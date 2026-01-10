@@ -4,7 +4,7 @@ import { localStore } from './localStore';
 const initialSheet = {
     id: 1,
     name: "Star Trek Character",
-    notes: "Welcome to your Star Trek character sheet!\n\nTo use:\n• Click on values in the right column to edit them directly.\n• Click EDIT to modify stat names, section titles, and add/remove entries.\n• Characteristics track both Initial and Current values (format: Initial/Current).\n• Special Skills are organized by category.\n• EXPORT your character to JSON and IMPORT it back anytime.\n• GMs can view all player sheets via the tabs at the top.",
+    notes: "Welcome to your Star Trek character sheet!\n\nTo use:\n• Click on values to edit them directly.\n• Click EDIT to modify stat names, section titles, and add/remove entries.\n• Characteristics have separate Initial and Current values.\n• Special Skills are organized by category.\n• EXPORT your character to JSON and IMPORT it back anytime.\n• GMs can view all player sheets via the tabs at the top.",
     sections: [
       {
         id: 1,
