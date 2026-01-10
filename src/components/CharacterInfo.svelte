@@ -104,24 +104,27 @@
         </div>
         
         <div class="character-info-portrait">
-            {#if portrait}
-                <div class="portrait-container">
+            <div class="portrait-container">
+                {#if portrait}
                     <img src={portrait} alt="Character portrait" class="portrait-image" />
-                    {#if editable && $editing}
-                        <button class="remove-portrait-btn" on:click={removePortrait} title="Remove portrait">×</button>
-                    {/if}
-                </div>
-            {:else}
-                <div class="portrait-container">
+                {:else}
                     <img src={defaultPortrait} alt="Default portrait" class="portrait-image" />
-                    {#if editable && $editing}
-                        <label class="portrait-overlay-upload">
-                            <input type="file" accept="image/*" on:change={handleImageUpload} class="portrait-input" />
-                            <div class="portrait-upload-overlay">
-                                <span>+</span>
-                                <span class="portrait-hint">Click to upload</span>
-                            </div>
-                        </label>
+                {/if}
+            </div>
+            {#if editable && $editing}
+                <div class="portrait-buttons">
+                    <label class="portrait-upload-button">
+                        <input type="file" accept="image/*" on:change={handleImageUpload} class="portrait-input" />
+                        {#if portrait}
+                            Change Image
+                        {:else}
+                            Upload Image
+                        {/if}
+                    </label>
+                    {#if portrait}
+                        <button class="portrait-reset-button" on:click={removePortrait} title="Reset to default">
+                            Reset to Default
+                        </button>
                     {/if}
                 </div>
             {/if}
@@ -212,76 +215,60 @@
         display: block;
     }
 
-    .remove-portrait-btn {
-        position: absolute;
-        top: 0.25rem;
-        right: 0.25rem;
-        background: rgba(var(--secondary), 0.9);
-        color: rgb(var(--primary));
-        border: 1px solid rgba(var(--accent), 0.5);
-        border-radius: 50%;
-        width: 1.5rem;
-        height: 1.5rem;
-        cursor: pointer;
-        font-size: 1.2rem;
-        line-height: 1;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        transition: all 0.2s ease;
 
-        &:hover {
-            background: rgba(var(--accent), 0.8);
-            color: rgb(var(--secondary));
-        }
+    .portrait-buttons {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+        margin-top: 0.75rem;
+        width: 100%;
+        max-width: 200px;
     }
 
     .portrait-input {
         display: none;
     }
 
-    .portrait-overlay-upload {
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        cursor: pointer;
-        opacity: 0;
-        transition: opacity 0.2s ease;
-        background: rgba(var(--secondary), 0.7);
+    .portrait-upload-button,
+    .portrait-reset-button {
+        padding: 0.5rem 1rem;
+        border: 1px solid rgba(var(--accent), 0.5);
         border-radius: 4px;
+        background: rgba(var(--accent), 0.1);
+        color: rgb(var(--accent));
+        cursor: pointer;
+        font-size: 0.9rem;
+        font-weight: 500;
+        text-align: center;
+        transition: all 0.2s ease;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
 
         &:hover {
-            opacity: 1;
+            background: rgba(var(--accent), 0.2);
+            border-color: rgba(var(--accent), 0.8);
+            color: rgb(var(--accent));
+        }
+
+        &:active {
+            transform: scale(0.98);
         }
     }
 
-    .portrait-upload-overlay {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        gap: 0.5rem;
-        color: rgba(var(--primary), 1);
-        pointer-events: none;
-
-        > span:first-child {
-            font-size: 2rem;
-            font-weight: 300;
-        }
-
-        .portrait-hint {
-            font-size: 0.85rem;
-            text-align: center;
-        }
+    .portrait-upload-button {
+        display: block;
     }
 
-    .portrait-container:hover .portrait-overlay-upload {
-        opacity: 1;
+    .portrait-reset-button {
+        background: rgba(255, 100, 100, 0.1);
+        border-color: rgba(255, 100, 100, 0.5);
+        color: rgba(255, 200, 200, 0.9);
+
+        &:hover {
+            background: rgba(255, 100, 100, 0.2);
+            border-color: rgba(255, 100, 100, 0.8);
+            color: rgba(255, 220, 220, 1);
+        }
     }
 
     @media only screen and (max-width: 33.75em) {
