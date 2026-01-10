@@ -29,7 +29,7 @@
             <tr>
                 <th class="header-cell header-left">STEALTH SPECIAL SKILL</th>
                 <th class="header-cell">Ranks</th>
-                <th class="header-cell">CURRENT SKILL</th>
+                <th class="header-cell">SKILL</th>
                 <th class="header-cell">Total</th>
             </tr>
         </thead>

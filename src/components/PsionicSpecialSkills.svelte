@@ -29,7 +29,7 @@
             <tr>
                 <th class="header-cell header-left">PSIONIC SPECIAL SKILL</th>
                 <th class="header-cell">Ranks</th>
-                <th class="header-cell">CURRENT PSIONICS</th>
+                <th class="header-cell">PSIONICS</th>
                 <th class="header-cell">Total</th>
             </tr>
         </thead>

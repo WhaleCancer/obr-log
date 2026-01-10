@@ -29,7 +29,7 @@
             <tr>
                 <th class="header-cell header-left">KNOWLEDGE SPECIAL SKILL</th>
                 <th class="header-cell">Ranks</th>
-                <th class="header-cell">CURRENT (SKILL/PSIONICS)</th>
+                <th class="header-cell">SKILL/PSIONICS</th>
                 <th class="header-cell">Total</th>
             </tr>
         </thead>
