@@ -14,8 +14,8 @@
     const skillDescriptions: Record<string, string> = {
         "Armor": "Training in wearing and using Starfleet combat armor, environmental suits, and personal protective equipment. This skill ensures armor provides maximum protection without hindering movement or combat effectiveness.",
         "Brawling": "Hand-to-hand combat using fists, kicks, and grappling techniques. Essential when phasers fail or close-quarters combat prevents ranged weapons. Covers Starfleet martial arts and improvised combat.",
-        "Firearms - Heavy": "Operating heavy energy weapons like phaser rifles, disruptor cannons, and plasma launchers. These two-handed weapons require strength and training to use effectively in combat situations.",
-        "Firearms - Light": "Proficiency with hand-held energy weapons including type I and II phasers, disruptor pistols, and compact beam weapons. Essential for Starfleet security and away team operations.",
+        "Firearms - Heavy": "Operating the photon mortar, an extremely heavy energy weapon requiring significant strength and training. This massive weapon inflicts devastating damage but is difficult to transport and deploy.",
+        "Firearms - Light": "Proficiency with hand-held energy weapons including type I and II phasers, phaser rifles, disruptor pistols, and compact beam weapons. Essential for Starfleet security and away team operations.",
         "Firearms - Vehicle": "Operating mounted weapons on shuttlecraft, ground vehicles, and defensive installations. Covers phaser emplacements, torpedo launchers, and automated defense systems.",
         "Melee Weapons": "Combat proficiency with bladed and impact weapons including bat'leths, mek'leths, lirpas, and Starfleet combat knives. Useful when phasers are unavailable or during ceremonial combat.",
         "Starship Gunnery": "Operating starship weapon systems including phaser banks and photon torpedo launchers. Requires understanding of targeting, weapon arcs, and coordination with tactical systems.",
