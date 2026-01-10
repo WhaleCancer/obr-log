@@ -100,14 +100,14 @@
 <style lang="scss">
     .characteristics-container {
         padding: 1rem 0.5rem;
-        margin: 1rem 0;
+        margin: 0;
         width: 100%;
     }
 
     .characteristics-table {
         border-collapse: collapse;
         width: 100%;
-        margin: 0 auto;
+        margin: 0;
     }
 
     .characteristics-table thead {
