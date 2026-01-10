@@ -18,7 +18,7 @@
 </script>
 
 <input id="importFile" type="file" accept="application/json" on:change={e => storeFile(e)} bind:value={saveFile}/>
-<button on:click={importFile}>Import</button>
+<button on:click={importFile} title="Load character from JSON file">📂 Load</button>
 
 <style lang="scss">
     input[type="file"] {

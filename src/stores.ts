@@ -392,13 +392,7 @@ const initialSheet = {
       {
         id: 9,
         name: "Talents",
-        stats: [
-          {
-            id: 1,
-            name: "Example Talent",
-            value: "Description or notes"
-          }
-        ]
+        stats: []
       },
       {
         id: 10,

@@ -11,6 +11,7 @@
     import StealthSpecialSkills from './StealthSpecialSkills.svelte';
     import KnowledgeSpecialSkills from './KnowledgeSpecialSkills.svelte';
     import PsionicSpecialSkills from './PsionicSpecialSkills.svelte';
+    import Talents from './Talents.svelte';
     import RemoveSection from './RemoveSection.svelte';
     import { currentPlayerId, viewingPlayerId } from "../services/OBRHelper";
     import type { AFFSheet } from '../types/sheet.type';
@@ -49,9 +50,15 @@
         s.name !== "Stealth Special Skills" &&
         s.name !== "Knowledge Special Skills"
     );
+    $: talentsSection = sheet.sections.find(s => s.name && s.name.trim() === "Talents");
     $: otherSections = sheet.sections.filter(s => 
-        s.name === "Talents" || s.name === "Drawbacks"
+        s.name === "Drawbacks"
     );
+    
+    // Ensure Talents section always exists in initial sheet structure
+    $: if (!talentsSection && sheet.sections.length > 0) {
+        console.warn("Talents section missing. Available sections:", sheet.sections.map(s => s.name));
+    }
     // Reactive statement to update currentSkill whenever the SKILL stat value changes
     $: skillValue = characteristicsSection?.stats?.find(s => s.name === "SKILL")?.value || "0/0";
     $: currentSkill = (() => {
@@ -172,7 +179,19 @@
     <!-- Special Skills Sections -->
     <Sections bind:sections={specialSkillsSections}/>
     
-    <!-- Other Sections (Talents, Drawbacks) -->
+    <!-- Talents Section -->
+    {#if talentsSection}
+        <div class="talents-section-wrapper">
+            <Talents bind:section={talentsSection}/>
+            {#if editable && $editing}
+                <div class="remove-section-container">
+                    <RemoveSection bind:section={talentsSection} on:removeSection={e => removeSection(e.detail)}/>
+                </div>
+            {/if}
+        </div>
+    {/if}
+    
+    <!-- Other Sections (Drawbacks) -->
     <Sections bind:sections={otherSections}/>
     
     <Notes bind:notes={sheet.notes}/>
@@ -223,6 +242,10 @@
         width: 100%;
     }
     .knowledge-skills-section-wrapper {
+        margin: 0 0 1rem 0;
+        width: 100%;
+    }
+    .talents-section-wrapper {
         margin: 0 0 1rem 0;
         width: 100%;
     }

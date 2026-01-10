@@ -6,13 +6,13 @@
 
     function exportFile (){
         let dl = JSON.stringify($sheet);
-        let filename = "AFF-Character-" + $sheet.name + "-" +  Date.now() + ".json";
+        let filename = "Star-Trek-Character-" + ($sheet.name || "Character") + "-" +  Date.now() + ".json";
         var blob = new Blob([dl], {type: "application/json"});
         saveAs(blob, filename);
     }
 </script>
 
-<button on:click={exportFile}>Export</button>
+<button on:click={exportFile} title="Save character to JSON file">💾 Save</button>
 
 <style lang="scss">
     button {
