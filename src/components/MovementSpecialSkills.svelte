@@ -66,6 +66,7 @@
         border-collapse: collapse;
         width: 100%;
         margin: 0 auto;
+        table-layout: fixed;
     }
 
     .movement-skills-table thead {
@@ -85,6 +86,11 @@
 
     .header-cell.header-left {
         text-align: left;
+        width: 55%;
+    }
+
+    .header-cell:not(.header-left) {
+        width: 15%;
     }
 
     .movement-skills-table tbody tr {
@@ -110,7 +116,9 @@
         font-weight: 500;
         color: rgba(var(--primary), 0.85);
         text-align: left;
-        width: auto;
+        width: 55%;
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
 
     .skill-value {
@@ -118,7 +126,7 @@
         font-weight: 600;
         text-align: center;
         color: rgba(var(--primary), 1);
-        min-width: 80px;
+        width: 15%;
     }
 
     .skill-value.ranks {
