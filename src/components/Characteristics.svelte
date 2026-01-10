@@ -81,7 +81,7 @@
                 {:else}
                 <td class="stat-value">{current}</td>
                 {/if}
-                {#if editable}
+                {#if editable && $editing}
                 <td class="stat-value" 
                     contenteditable="true" 
                     on:blur={(e) => handleInitialChange(stat, e)}
