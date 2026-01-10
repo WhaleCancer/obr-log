@@ -15,6 +15,10 @@
     export let portrait: string = ""; // Base64 image data (bound from parent)
 
     const dispatch = createEventDispatcher();
+    
+    // Default portrait image path - using Vite's base URL
+    const baseUrl = import.meta.env.BASE_URL || '/star-trek-character-sheet/';
+    const defaultPortrait = `${baseUrl}no-token.png`;
 
     $: editable = $currentPlayerId === $viewingPlayerId;
     $: newStatId = section.stats.length > 0 ? Math.max(...section.stats.map(t => t.id)) + 1 : 1;
@@ -108,19 +112,18 @@
                     {/if}
                 </div>
             {:else}
-                {#if editable && $editing}
-                    <label class="portrait-upload-label">
-                        <input type="file" accept="image/*" on:change={handleImageUpload} class="portrait-input" />
-                        <div class="portrait-placeholder">
-                            <span>+</span>
-                            <span class="portrait-hint">Click to upload portrait</span>
-                        </div>
-                    </label>
-                {:else}
-                    <div class="portrait-placeholder">
-                        <span>No portrait</span>
-                    </div>
-                {/if}
+                <div class="portrait-container">
+                    <img src={defaultPortrait} alt="Default portrait" class="portrait-image" />
+                    {#if editable && $editing}
+                        <label class="portrait-overlay-upload">
+                            <input type="file" accept="image/*" on:change={handleImageUpload} class="portrait-input" />
+                            <div class="portrait-upload-overlay">
+                                <span>+</span>
+                                <span class="portrait-hint">Click to upload</span>
+                            </div>
+                        </label>
+                    {/if}
+                </div>
             {/if}
         </div>
     </div>
@@ -233,37 +236,38 @@
         }
     }
 
-    .portrait-upload-label {
-        width: 100%;
-        max-width: 200px;
-        aspect-ratio: 1;
-        display: block;
-        cursor: pointer;
-    }
-
     .portrait-input {
         display: none;
     }
 
-    .portrait-placeholder {
+    .portrait-overlay-upload {
+        position: absolute;
+        top: 0;
+        left: 0;
         width: 100%;
         height: 100%;
-        border: 2px dashed rgba(var(--accent), 0.5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        opacity: 0;
+        transition: opacity 0.2s ease;
+        background: rgba(var(--secondary), 0.7);
         border-radius: 4px;
+
+        &:hover {
+            opacity: 1;
+        }
+    }
+
+    .portrait-upload-overlay {
         display: flex;
         flex-direction: column;
         align-items: center;
         justify-content: center;
         gap: 0.5rem;
-        background: rgba(var(--accent), 0.05);
-        color: rgba(var(--primary), 0.6);
-        transition: all 0.2s ease;
-
-        &:hover {
-            border-color: rgba(var(--accent), 0.8);
-            background: rgba(var(--accent), 0.1);
-            color: rgba(var(--primary), 0.9);
-        }
+        color: rgba(var(--primary), 1);
+        pointer-events: none;
 
         > span:first-child {
             font-size: 2rem;
@@ -274,6 +278,10 @@
             font-size: 0.85rem;
             text-align: center;
         }
+    }
+
+    .portrait-container:hover .portrait-overlay-upload {
+        opacity: 1;
     }
 
     @media only screen and (max-width: 33.75em) {
