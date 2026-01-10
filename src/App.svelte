@@ -4,59 +4,79 @@
   import { onMount } from "svelte";
   import GmBinderTabs from './components/GMBinderTabs.svelte';
   import  Sheet  from './components/Sheet.svelte'
+  import DiceLog from './components/DiceLog.svelte'
   import OBR from "@owlbear-rodeo/sdk";
 
   import { sheet } from './stores';
   import { ViewingSheet, currentPlayerId, viewingPlayerId } from './services/OBRHelper';
   import * as OBRHelper from './services/OBRHelper';
-
+  import { diceRolls } from './stores/diceRolls';
 
   const { isGM } = OBRHelper;
-  $: mainSheetVisible = $currentPlayerId === $viewingPlayerId ? "display:block;" : "display:none;";
-  $: viewingSheetVisible = $currentPlayerId === $viewingPlayerId ? "display:none;" : "display:block";
-
+  
+  // Check URL parameters to determine which panel to show
+  let isDiceLogPanel = false;
+  
   onMount(() => {
-    // Clear corrupted localStorage if needed
-    try {
-      const stored = localStorage.getItem('star-trek-character-sheet');
-      if (stored && (stored === 'undefined' || stored === '' || (!stored.trim().startsWith('{') && !stored.trim().startsWith('[')))) {
-        console.warn('Clearing corrupted localStorage data');
-        localStorage.removeItem('star-trek-character-sheet');
-        // Reload the page to reinitialize with default values
-        window.location.reload();
-      }
-    } catch (e) {
-      console.warn('Error checking localStorage:', e);
-    }
+    // Check URL parameters or hash for panel type
+    const urlParams = new URLSearchParams(window.location.search);
+    const hash = window.location.hash;
+    isDiceLogPanel = urlParams.get('panel') === 'dice-log' || hash === '#dice-log';
     
-    if (OBR.isAvailable) {
-      OBRHelper.init();
+    if (isDiceLogPanel) {
+      // Initialize dice rolls store for log panel
+      diceRolls.initialize();
+    } else {
+      // Clear corrupted localStorage if needed
+      try {
+        const stored = localStorage.getItem('star-trek-character-sheet');
+        if (stored && (stored === 'undefined' || stored === '' || (!stored.trim().startsWith('{') && !stored.trim().startsWith('[')))) {
+          console.warn('Clearing corrupted localStorage data');
+          localStorage.removeItem('star-trek-character-sheet');
+          // Reload the page to reinitialize with default values
+          window.location.reload();
+        }
+      } catch (e) {
+        console.warn('Error checking localStorage:', e);
+      }
+      
+      if (OBR.isAvailable) {
+        OBRHelper.init();
+      }
     }
   });
 
+  $: mainSheetVisible = $currentPlayerId === $viewingPlayerId ? "display:block;" : "display:none;";
+  $: viewingSheetVisible = $currentPlayerId === $viewingPlayerId ? "display:none;" : "display:block";
 
 </script>
 
 <Themer>
-  <main>
-    {#if $isGM}
-    <GmBinderTabs/>
-    {/if}
-    <div style="{mainSheetVisible}">
-      {#if $sheet}
-        <Sheet bind:sheet={$sheet}/>
+  {#if isDiceLogPanel}
+    <main>
+      <DiceLog/>
+    </main>
+  {:else}
+    <main>
+      {#if $isGM}
+      <GmBinderTabs/>
       {/if}
-    </div>
-    <div style="{viewingSheetVisible}">
-      {#if $ViewingSheet}
-        <Sheet bind:sheet={$ViewingSheet}/>
-      {/if}
-    </div>
+      <div style="{mainSheetVisible}">
+        {#if $sheet}
+          <Sheet bind:sheet={$sheet}/>
+        {/if}
+      </div>
+      <div style="{viewingSheetVisible}">
+        {#if $ViewingSheet}
+          <Sheet bind:sheet={$ViewingSheet}/>
+        {/if}
+      </div>
 
-  </main>
-  <footer>
-    <a target="_blank" href="https://github.com/WhaleCancer/star-trek-character-sheet">Star Trek Character Sheet</a>
-  </footer>
+    </main>
+    <footer>
+      <a target="_blank" href="https://github.com/WhaleCancer/star-trek-character-sheet">Star Trek Character Sheet</a>
+    </footer>
+  {/if}
 </Themer>
 
 <style lang="scss">

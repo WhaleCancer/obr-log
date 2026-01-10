@@ -1,5 +1,8 @@
 <script lang="ts">
     import { createEventDispatcher } from 'svelte';
+    import { diceRolls } from '../stores/diceRolls';
+    import { currentPlayerName, currentPlayerId } from '../services/OBRHelper';
+    import { get } from 'svelte/store';
     
     const dispatch = createEventDispatcher();
     
@@ -26,6 +29,22 @@
         
         // Compare against target number
         isSuccess = rollResult >= localTargetNumber;
+        
+        // Log the roll
+        const playerName = get(currentPlayerName) || 'Unknown Player';
+        const playerId = get(currentPlayerId) || 'unknown';
+        
+        diceRolls.addRoll({
+            playerName,
+            playerId,
+            skillName,
+            die1: die1!,
+            die2: die2!,
+            modifier: localModifier,
+            targetNumber: localTargetNumber,
+            total: rollResult!,
+            isSuccess: isSuccess!
+        });
     }
     
     function closeModal() {

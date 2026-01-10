@@ -5,4 +5,12 @@ import { svelte } from '@sveltejs/vite-plugin-svelte'
 export default defineConfig({
   base: '/star-trek-character-sheet/',
   plugins: [svelte()],
+  build: {
+    rollupOptions: {
+      input: {
+        main: './index.html',
+        diceLog: './index-dice-log.html'
+      }
+    }
+  }
 })
