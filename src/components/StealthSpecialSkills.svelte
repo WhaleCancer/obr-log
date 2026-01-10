@@ -10,6 +10,20 @@
 
     $: editable = $currentPlayerId === $viewingPlayerId;
     
+    // Skill descriptions for tooltips
+    const skillDescriptions: Record<string, string> = {
+        "Awareness": "Heightened perception and intuition for detecting threats, hidden objects, and suspicious activities. Essential for spotting ambushes, noticing concealed enemies, and identifying anomalies. Covers all senses including visual, auditory, and instinctual detection.",
+        "Disguise": "Proficiency in altering appearance, voice, and mannerisms to blend in with different cultures or impersonate others. Essential for undercover operations and infiltration missions. Covers makeup, prosthetics, holographic disguises, and cultural adaptation.",
+        "Locks": "Skill in bypassing security systems including mechanical locks, electronic keypads, biometric scanners, and encrypted access panels. Essential for infiltration, rescue operations, and accessing restricted areas. Requires knowledge of various security technologies across different species and civilizations.",
+        "Sleight of Hand": "Dexterity and precision for pickpocketing, palming objects, and performing covert manipulations. Useful for planting trackers, swapping items, accessing systems unnoticed, or acquiring information. Essential for intelligence operations and covert missions.",
+        "Sneak": "Proficiency in moving silently, remaining concealed, and avoiding detection. Essential for infiltration, reconnaissance, and stealth operations. Covers moving quietly through ship corridors, hiding in shadows, and evading security sensors and patrols."
+    };
+    
+    // Helper function to get description for a skill
+    function getSkillDescription(skillName: string): string {
+        return skillDescriptions[skillName] || "";
+    }
+    
     // Helper function to parse number from string value
     function parseNumber(value: string): number {
         const num = parseInt(value.trim() || '0', 10);
@@ -20,6 +34,33 @@
     function calculateTotal(ranksValue: string): number {
         const ranks = parseNumber(ranksValue);
         return ranks + currentSkill;
+    }
+    
+    // Track which tooltip is shown
+    let hoveredSkill: string | null = null;
+    let tooltipElement: HTMLElement | null = null;
+    let tooltipPosition = { x: 0, y: 0 };
+    
+    function handleMouseEnter(event: MouseEvent, skillName: string) {
+        hoveredSkill = skillName;
+        const target = event.currentTarget as HTMLElement;
+        tooltipElement = target;
+        updateTooltipPosition(event);
+    }
+    
+    function handleMouseMove(event: MouseEvent) {
+        if (hoveredSkill) {
+            updateTooltipPosition(event);
+        }
+    }
+    
+    function updateTooltipPosition(event: MouseEvent) {
+        tooltipPosition = { x: event.clientX, y: event.clientY };
+    }
+    
+    function handleMouseLeave() {
+        hoveredSkill = null;
+        tooltipElement = null;
     }
 </script>
 
@@ -39,9 +80,17 @@
             {@const isEven = index % 2 === 0}
             <tr class:has-ranks={hasRanks} class:even-row={isEven} class:odd-row={!isEven}>
                 {#if editable && $editing}
-                <td class="skill-name" contenteditable="true" bind:innerText={stat.name}>{stat.name}</td>
+                <td class="skill-name" 
+                    contenteditable="true" 
+                    bind:innerText={stat.name}
+                    on:mouseenter={(e) => handleMouseEnter(e, stat.name)}
+                    on:mouseleave={handleMouseLeave}
+                    on:mousemove={handleMouseMove}>{stat.name}</td>
                 {:else}
-                <td class="skill-name">{stat.name}</td>
+                <td class="skill-name tooltip-trigger"
+                    on:mouseenter={(e) => handleMouseEnter(e, stat.name)}
+                    on:mouseleave={handleMouseLeave}
+                    on:mousemove={handleMouseMove}>{stat.name}</td>
                 {/if}
                 {#if editable}
                 <td class="skill-value ranks" 
@@ -59,6 +108,13 @@
         </tbody>
     </table>
 </div>
+
+{#if hoveredSkill && getSkillDescription(hoveredSkill)}
+    <div class="tooltip" style="left: {tooltipPosition.x}px; top: {tooltipPosition.y}px">
+        <div class="tooltip-title">{hoveredSkill}</div>
+        <div class="tooltip-content">{getSkillDescription(hoveredSkill)}</div>
+    </div>
+{/if}
 
 <style lang="scss">
     .stealth-skills-container {
@@ -164,5 +220,49 @@
     .skill-value.ranks:hover {
         color: rgb(var(--accent));
         transition: color 0.2s ease;
+    }
+
+    .tooltip-trigger {
+        cursor: help;
+    }
+
+    .tooltip {
+        position: fixed;
+        z-index: 10000;
+        max-width: 300px;
+        padding: 0.75rem 1rem;
+        background: rgba(20, 20, 30, 0.98);
+        border: 2px solid rgb(var(--accent));
+        border-radius: 0.5rem;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+        pointer-events: none;
+        transform: translate(-50%, calc(-100% - 10px));
+        margin-left: 10px;
+        margin-top: -10px;
+    }
+
+    .tooltip-title {
+        font-weight: 700;
+        font-size: 1rem;
+        color: rgb(var(--accent));
+        margin-bottom: 0.5rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    .tooltip-content {
+        font-size: 0.875rem;
+        color: rgba(var(--primary), 0.9);
+        line-height: 1.5;
+    }
+
+    .tooltip::after {
+        content: '';
+        position: absolute;
+        bottom: -8px;
+        left: 50%;
+        transform: translateX(-50%);
+        border: 8px solid transparent;
+        border-top-color: rgb(var(--accent));
     }
 </style>
