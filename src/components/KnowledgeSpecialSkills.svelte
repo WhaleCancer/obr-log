@@ -11,9 +11,7 @@
     $: editable = $currentPlayerId === $viewingPlayerId;
     
     // Skill descriptions for tooltips
-    const skillDescriptions: Record<string, string> = {
-        "Trap Knowledge": "Understanding of security systems, traps, and hazard detection. Covers identifying pressure plates, proximity sensors, energy fields, and mechanical traps. Essential for safely navigating ancient ruins, enemy installations, and booby-trapped locations. Includes knowledge of disarming techniques and trap placement strategies across different cultures and technologies."
-    };
+    const skillDescriptions: Record<string, string> = {};
     
     // Helper function to get description for a skill
     function getSkillDescription(skillName: string): string {

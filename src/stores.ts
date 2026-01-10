@@ -171,7 +171,7 @@ const initialSheet = {
           },
           {
             id: 6,
-            name: "Trap Knowledge",
+            name: "Traps",
             value: "0"
           }
         ]
@@ -313,11 +313,6 @@ const initialSheet = {
           {
             id: 27,
             name: "Zoology",
-            value: "0"
-          },
-          {
-            id: 28,
-            name: "Trap Knowledge",
             value: "0"
           }
         ]

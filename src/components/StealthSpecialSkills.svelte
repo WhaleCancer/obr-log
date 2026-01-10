@@ -16,7 +16,8 @@
         "Disguise": "Proficiency in altering appearance, voice, and mannerisms to blend in with different cultures or impersonate others. Essential for undercover operations and infiltration missions. Covers makeup, prosthetics, holographic disguises, and cultural adaptation.",
         "Locks": "Skill in bypassing security systems including mechanical locks, electronic keypads, biometric scanners, and encrypted access panels. Essential for infiltration, rescue operations, and accessing restricted areas. Requires knowledge of various security technologies across different species and civilizations.",
         "Sleight of Hand": "Dexterity and precision for pickpocketing, palming objects, and performing covert manipulations. Useful for planting trackers, swapping items, accessing systems unnoticed, or acquiring information. Essential for intelligence operations and covert missions.",
-        "Sneak": "Proficiency in moving silently, remaining concealed, and avoiding detection. Essential for infiltration, reconnaissance, and stealth operations. Covers moving quietly through ship corridors, hiding in shadows, and evading security sensors and patrols."
+        "Sneak": "Proficiency in moving silently, remaining concealed, and avoiding detection. Essential for infiltration, reconnaissance, and stealth operations. Covers moving quietly through ship corridors, hiding in shadows, and evading security sensors and patrols.",
+        "Traps": "Understanding of security systems, traps, and hazard detection. Covers identifying pressure plates, proximity sensors, energy fields, and mechanical traps. Essential for safely navigating ancient ruins, enemy installations, and booby-trapped locations. Includes knowledge of disarming techniques and trap placement strategies across different cultures and technologies."
     };
     
     // Helper function to get description for a skill
