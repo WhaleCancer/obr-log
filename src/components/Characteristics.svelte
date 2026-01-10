@@ -58,7 +58,7 @@
     <table class="characteristics-table">
         <thead>
             <tr>
-                <th></th>
+                <th class="header-cell">CHARACTERISTIC</th>
                 <th class="header-cell">Initial</th>
                 <th class="header-cell">Current</th>
             </tr>

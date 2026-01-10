@@ -58,11 +58,6 @@
     <!-- Characteristics Section - Right after Character Info -->
     {#if characteristicsSection}
         <div class="characteristics-section-wrapper">
-            {#if editable && $editing}
-                <h2 bind:innerText={characteristicsSection.name} contenteditable="true">{characteristicsSection.name}</h2>
-            {:else}
-                <h2>{characteristicsSection.name}</h2>
-            {/if}
             <Characteristics bind:stats={characteristicsSection.stats}/>
             {#if editable && $editing}
                 <div class="remove-section-container">
@@ -104,14 +99,6 @@
         margin: 1.5rem 0;
         width: 100%;
         clear: both;
-    }
-    .characteristics-section-wrapper h2 {
-        text-shadow: var(--shadow);
-        color: rgb(var(--accent));
-        font-size: 1.2rem;
-        margin-bottom: 0.75rem;
-        text-align: center;
-        font-weight: 600;
     }
     .remove-section-container {
         margin-top: 1rem;
