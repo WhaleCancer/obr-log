@@ -16,6 +16,19 @@
   $: viewingSheetVisible = $currentPlayerId === $viewingPlayerId ? "display:none;" : "display:block";
 
   onMount(() => {
+    // Clear corrupted localStorage if needed
+    try {
+      const stored = localStorage.getItem('star-trek-character-sheet');
+      if (stored && (stored === 'undefined' || stored === '' || (!stored.trim().startsWith('{') && !stored.trim().startsWith('[')))) {
+        console.warn('Clearing corrupted localStorage data');
+        localStorage.removeItem('star-trek-character-sheet');
+        // Reload the page to reinitialize with default values
+        window.location.reload();
+      }
+    } catch (e) {
+      console.warn('Error checking localStorage:', e);
+    }
+    
     if (OBR.isAvailable) {
       OBRHelper.init();
     }
@@ -30,10 +43,14 @@
     <GmBinderTabs/>
     {/if}
     <div style="{mainSheetVisible}">
-      <Sheet bind:sheet={$sheet}/>
+      {#if $sheet}
+        <Sheet bind:sheet={$sheet}/>
+      {/if}
     </div>
     <div style="{viewingSheetVisible}">
-      <Sheet bind:sheet={$ViewingSheet}/>
+      {#if $ViewingSheet}
+        <Sheet bind:sheet={$ViewingSheet}/>
+      {/if}
     </div>
 
   </main>

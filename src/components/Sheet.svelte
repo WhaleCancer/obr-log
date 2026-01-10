@@ -10,6 +10,7 @@
     import MovementSpecialSkills from './MovementSpecialSkills.svelte';
     import StealthSpecialSkills from './StealthSpecialSkills.svelte';
     import KnowledgeSpecialSkills from './KnowledgeSpecialSkills.svelte';
+    import ScienceSpecialSkills from './ScienceSpecialSkills.svelte';
     import PsionicSpecialSkills from './PsionicSpecialSkills.svelte';
     import Talents from './Talents.svelte';
     import RemoveSection from './RemoveSection.svelte';
@@ -32,14 +33,15 @@
     export let sheet:AFFSheet;
     
     // Split sections: Character Info first, then Special Skills, then Characteristics, then rest
-    $: characteristicsSection = sheet.sections.find(s => s.name === "Characteristics");
-    $: characterInfoSection = sheet.sections.find(s => s.name === "Character Info");
-    $: combatSpecialSkillsSection = sheet.sections.find(s => s.name === "Combat Special Skills");
-    $: psionicSpecialSkillsSection = sheet.sections.find(s => s.name === "Psionic Special Skills");
-    $: movementSpecialSkillsSection = sheet.sections.find(s => s.name === "Movement Special Skills");
-    $: stealthSpecialSkillsSection = sheet.sections.find(s => s.name === "Stealth Special Skills");
-    $: knowledgeSpecialSkillsSection = sheet.sections.find(s => s.name === "Knowledge Special Skills");
-    $: specialSkillsSections = sheet.sections.filter(s => 
+    $: characteristicsSection = sheet?.sections?.find(s => s.name === "Characteristics");
+    $: characterInfoSection = sheet?.sections?.find(s => s.name === "Character Info");
+    $: combatSpecialSkillsSection = sheet?.sections?.find(s => s.name === "Combat Special Skills");
+    $: psionicSpecialSkillsSection = sheet?.sections?.find(s => s.name === "Psionic Special Skills");
+    $: movementSpecialSkillsSection = sheet?.sections?.find(s => s.name === "Movement Special Skills");
+    $: stealthSpecialSkillsSection = sheet?.sections?.find(s => s.name === "Stealth Special Skills");
+    $: knowledgeSpecialSkillsSection = sheet?.sections?.find(s => s.name === "Knowledge Special Skills");
+    $: scienceSpecialSkillsSection = sheet?.sections?.find(s => s.name === "Science Special Skills");
+    $: specialSkillsSections = (sheet?.sections || []).filter(s => 
         s.name !== "Characteristics" && 
         s.name !== "Character Info" && 
         s.name !== "Talents" && 
@@ -48,10 +50,11 @@
         s.name !== "Psionic Special Skills" &&
         s.name !== "Movement Special Skills" &&
         s.name !== "Stealth Special Skills" &&
-        s.name !== "Knowledge Special Skills"
+        s.name !== "Knowledge Special Skills" &&
+        s.name !== "Science Special Skills"
     );
-    $: talentsSection = sheet.sections.find(s => s.name && s.name.trim() === "Talents");
-    $: otherSections = sheet.sections.filter(s => 
+    $: talentsSection = sheet?.sections?.find(s => s.name && s.name.trim() === "Talents");
+    $: otherSections = (sheet?.sections || []).filter(s => 
         s.name === "Drawbacks"
     );
     
@@ -62,6 +65,7 @@
     // Reactive statement to update currentSkill whenever the SKILL stat value changes
     $: skillValue = characteristicsSection?.stats?.find(s => s.name === "SKILL")?.value || "0/0";
     $: currentSkill = (() => {
+        if (!skillValue) return 0;
         const parts = skillValue.split('/');
         const current = parts[1]?.trim() || parts[0]?.trim() || '0';
         const num = parseInt(current, 10);
@@ -71,14 +75,27 @@
     // Reactive statement to update currentPsionics whenever the PSIONICS stat value changes
     $: psionicsValue = characteristicsSection?.stats?.find(s => s.name === "PSIONICS")?.value || "0/0";
     $: currentPsionics = (() => {
+        if (!psionicsValue) return 0;
         const parts = psionicsValue.split('/');
         const current = parts[1]?.trim() || parts[0]?.trim() || '0';
         const num = parseInt(current, 10);
         return isNaN(num) ? 0 : num;
     })();
     
+    // Get PSIONICS initial value (for hiding PSIONICS-related content when 0)
+    $: psionicsInitial = (() => {
+        if (!psionicsValue) return 0;
+        const parts = psionicsValue.split('/');
+        const initial = parts[0]?.trim() || '0';
+        const num = parseInt(initial, 10);
+        return isNaN(num) ? 0 : num;
+    })();
+    
     // For Knowledge Skills, use whichever is higher: SKILL or PSIONICS
-    $: currentKnowledgeSkill = Math.max(currentSkill, currentPsionics);
+    $: currentKnowledgeSkill = Math.max(currentSkill || 0, currentPsionics || 0);
+    
+    // For Science Skills, use whichever is higher: SKILL or PSIONICS (same as Knowledge)
+    $: currentScienceSkill = Math.max(currentSkill || 0, currentPsionics || 0);
     
     function toggleEditing(){ 
       $editing = !$editing;
@@ -91,24 +108,19 @@
 </script>
 
 <div>
-    {#if editable && $editing}
-    <h1 bind:innerText={sheet.name} contenteditable="true"> </h1>
-    {:else}
-    <h1>{sheet.name}</h1>
-    {/if}
     <h4>{player}</h4>
     <SheetActions/>
     
     <!-- Character Info Section -->
     {#if characterInfoSection}
-        <CharacterInfo bind:section={characterInfoSection} portrait={sheet.portrait || ""} on:portraitChange={handlePortraitChange} on:removeSection={e => removeSection(e.detail)}/>
+        <CharacterInfo bind:section={characterInfoSection} bind:sheet={sheet} portrait={sheet.portrait || ""} on:portraitChange={handlePortraitChange} on:removeSection={e => removeSection(e.detail)}/>
     {/if}
     
     <!-- Characteristics Section - Right after Character Info -->
     {#if characteristicsSection}
         <div class="characteristics-section-wrapper">
             <Characteristics bind:stats={characteristicsSection.stats}/>
-            {#if editable && $editing}
+            {#if editable && !$editing}
                 <div class="remove-section-container">
                     <RemoveSection bind:section={characteristicsSection} on:removeSection={e => removeSection(e.detail)}/>
                 </div>
@@ -120,7 +132,7 @@
     {#if combatSpecialSkillsSection}
         <div class="combat-skills-section-wrapper">
             <CombatSpecialSkills bind:stats={combatSpecialSkillsSection.stats} currentSkill={currentSkill}/>
-            {#if editable && $editing}
+            {#if editable && !$editing}
                 <div class="remove-section-container">
                     <RemoveSection bind:section={combatSpecialSkillsSection} on:removeSection={e => removeSection(e.detail)}/>
                 </div>
@@ -129,10 +141,10 @@
     {/if}
     
     <!-- Psionic Special Skills Section (Special handling) -->
-    {#if psionicSpecialSkillsSection}
+    {#if psionicSpecialSkillsSection && ($editing || psionicsInitial > 0)}
         <div class="psionic-skills-section-wrapper">
             <PsionicSpecialSkills bind:stats={psionicSpecialSkillsSection.stats} currentPsionics={currentPsionics}/>
-            {#if editable && $editing}
+            {#if editable && !$editing}
                 <div class="remove-section-container">
                     <RemoveSection bind:section={psionicSpecialSkillsSection} on:removeSection={e => removeSection(e.detail)}/>
                 </div>
@@ -144,7 +156,7 @@
     {#if movementSpecialSkillsSection}
         <div class="movement-skills-section-wrapper">
             <MovementSpecialSkills bind:stats={movementSpecialSkillsSection.stats} currentSkill={currentSkill}/>
-            {#if editable && $editing}
+            {#if editable && !$editing}
                 <div class="remove-section-container">
                     <RemoveSection bind:section={movementSpecialSkillsSection} on:removeSection={e => removeSection(e.detail)}/>
                 </div>
@@ -156,7 +168,7 @@
     {#if stealthSpecialSkillsSection}
         <div class="stealth-skills-section-wrapper">
             <StealthSpecialSkills bind:stats={stealthSpecialSkillsSection.stats} currentSkill={currentSkill}/>
-            {#if editable && $editing}
+            {#if editable && !$editing}
                 <div class="remove-section-container">
                     <RemoveSection bind:section={stealthSpecialSkillsSection} on:removeSection={e => removeSection(e.detail)}/>
                 </div>
@@ -168,9 +180,21 @@
     {#if knowledgeSpecialSkillsSection}
         <div class="knowledge-skills-section-wrapper">
             <KnowledgeSpecialSkills bind:stats={knowledgeSpecialSkillsSection.stats} currentSkill={currentKnowledgeSkill}/>
-            {#if editable && $editing}
+            {#if editable && !$editing}
                 <div class="remove-section-container">
                     <RemoveSection bind:section={knowledgeSpecialSkillsSection} on:removeSection={e => removeSection(e.detail)}/>
+                </div>
+            {/if}
+        </div>
+    {/if}
+    
+    <!-- Science Special Skills Section (Special handling) -->
+    {#if scienceSpecialSkillsSection}
+        <div class="science-skills-section-wrapper">
+            <ScienceSpecialSkills bind:stats={scienceSpecialSkillsSection.stats} currentSkill={currentScienceSkill}/>
+            {#if editable && !$editing}
+                <div class="remove-section-container">
+                    <RemoveSection bind:section={scienceSpecialSkillsSection} on:removeSection={e => removeSection(e.detail)}/>
                 </div>
             {/if}
         </div>
@@ -183,7 +207,7 @@
     {#if talentsSection}
         <div class="talents-section-wrapper">
             <Talents bind:section={talentsSection}/>
-            {#if editable && $editing}
+            {#if editable && !$editing}
                 <div class="remove-section-container">
                     <RemoveSection bind:section={talentsSection} on:removeSection={e => removeSection(e.detail)}/>
                 </div>
@@ -216,34 +240,39 @@
         color:rgb(var(--accent));
         text-align: right;
     }
-    .characteristics-section-wrapper {
-        margin: 1.5rem 0;
+    .characteristics-section-wrapper,
+    .combat-skills-section-wrapper,
+    .psionic-skills-section-wrapper,
+    .movement-skills-section-wrapper,
+    .stealth-skills-section-wrapper,
+    .knowledge-skills-section-wrapper,
+    .science-skills-section-wrapper {
+        margin: 0;
+        padding: 0;
         width: 100%;
+        display: block;
+        font-size: 0;
+        box-sizing: border-box;
+    }
+    .characteristics-section-wrapper {
         clear: both;
     }
+    .characteristics-section-wrapper > *,
+    .combat-skills-section-wrapper > *,
+    .psionic-skills-section-wrapper > *,
+    .movement-skills-section-wrapper > *,
+    .stealth-skills-section-wrapper > *,
+    .knowledge-skills-section-wrapper > *,
+    .science-skills-section-wrapper > * {
+        margin: 0;
+        padding: 0;
+        font-size: initial;
+        box-sizing: border-box;
+    }
     .remove-section-container {
-        margin-top: 1rem;
+        margin: 0;
+        padding: 0;
         text-align: center;
-    }
-    .combat-skills-section-wrapper {
-        margin: 1rem 0 0 0;
-        width: 100%;
-    }
-    .psionic-skills-section-wrapper {
-        margin: 0 0 0 0;
-        width: 100%;
-    }
-    .movement-skills-section-wrapper {
-        margin: 0 0 0 0;
-        width: 100%;
-    }
-    .stealth-skills-section-wrapper {
-        margin: 0 0 0 0;
-        width: 100%;
-    }
-    .knowledge-skills-section-wrapper {
-        margin: 0 0 1rem 0;
-        width: 100%;
     }
     .talents-section-wrapper {
         margin: 0 0 1rem 0;

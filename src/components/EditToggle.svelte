@@ -8,9 +8,9 @@
 </script>
 
 {#if $editing}
-<button style="font-style:italic;" on:click={toggleEditing}>Editing&hellip;</button>
+<button style="font-style:italic;" on:click={toggleEditing}>✏️ Editing&hellip;</button>
 {:else}
-<button on:click={toggleEditing}>Edit</button>
+<button on:click={toggleEditing}>✏️ Edit</button>
 {/if}
 
 <style lang="scss">

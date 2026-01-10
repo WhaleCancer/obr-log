@@ -81,9 +81,42 @@
     $: majorTalents = allTalents.filter(t => t.type === 'Major');
     $: minorTalents = allTalents.filter(t => t.type === 'Minor');
 
-    // Helper to format description (replace \n with actual newlines)
+    // Helper to format description - convert line breaks to flowing text
     function formatDescription(desc: string): string {
-        return desc.replace(/\\n/g, '\n');
+        if (!desc) return '';
+        // Handle both escaped newlines (from JSON) and actual newlines (from TypeScript strings)
+        let formatted = desc.replace(/\\n/g, '\n');
+        // Replace double newlines (paragraph breaks) with a space
+        formatted = formatted.replace(/\n\n+/g, ' ');
+        // Replace single newlines with spaces (join lines into flowing text)
+        formatted = formatted.replace(/\n/g, ' ');
+        // Collapse multiple spaces into single space
+        formatted = formatted.replace(/\s+/g, ' ');
+        // Trim leading/trailing whitespace
+        return formatted.trim();
+    }
+
+    // Tooltip functionality for edit mode
+    let hoveredTalent: Talent | null = null;
+    let tooltipPosition = { x: 0, y: 0 };
+
+    function handleMouseEnter(event: MouseEvent, talent: Talent) {
+        hoveredTalent = talent;
+        updateTooltipPosition(event);
+    }
+
+    function handleMouseMove(event: MouseEvent) {
+        if (hoveredTalent) {
+            updateTooltipPosition(event);
+        }
+    }
+
+    function updateTooltipPosition(event: MouseEvent) {
+        tooltipPosition = { x: event.clientX, y: event.clientY };
+    }
+
+    function handleMouseLeave() {
+        hoveredTalent = null;
     }
 </script>
 
@@ -103,7 +136,12 @@
                     <h3 class="group-header">Major Talents</h3>
                     <div class="checkbox-list">
                         {#each majorTalents as talent (talent.name)}
-                            <label class="checkbox-item">
+                            <label 
+                                class="checkbox-item tooltip-trigger"
+                                on:mouseenter={(e) => handleMouseEnter(e, talent)}
+                                on:mouseleave={handleMouseLeave}
+                                on:mousemove={handleMouseMove}
+                            >
                                 <input
                                     type="checkbox"
                                     checked={isOwned(talent.name)}
@@ -119,7 +157,12 @@
                     <h3 class="group-header">Minor Talents</h3>
                     <div class="checkbox-list">
                         {#each minorTalents as talent (talent.name)}
-                            <label class="checkbox-item">
+                            <label 
+                                class="checkbox-item tooltip-trigger"
+                                on:mouseenter={(e) => handleMouseEnter(e, talent)}
+                                on:mouseleave={handleMouseLeave}
+                                on:mousemove={handleMouseMove}
+                            >
                                 <input
                                     type="checkbox"
                                     checked={isOwned(talent.name)}
@@ -131,17 +174,40 @@
                     </div>
                 </div>
             </div>
+
+            <!-- Tooltip for edit mode -->
+            {#if hoveredTalent}
+                <div 
+                    class="tooltip"
+                    style="left: {tooltipPosition.x}px; top: {tooltipPosition.y}px;"
+                >
+                    <div class="tooltip-title">{hoveredTalent.name.toUpperCase()}</div>
+                    <div class="tooltip-content">{formatDescription(hoveredTalent.description)}</div>
+                </div>
+            {/if}
         {:else}
             <!-- View Mode: Table display of owned talents -->
             {#if ownedTalents && ownedTalents.length > 0}
                 <table class="talents-table">
+                    <colgroup>
+                        <col class="col-name">
+                        <col class="col-type">
+                        <col class="col-description">
+                    </colgroup>
+                    <thead>
+                        <tr>
+                            <th class="header-cell">Name</th>
+                            <th class="header-cell">Type</th>
+                            <th class="header-cell">Description</th>
+                        </tr>
+                    </thead>
                     <tbody>
                         {#each ownedTalents as talent, index (talent.name)}
                             {@const isEven = index % 2 === 0}
                             <tr class:even-row={isEven} class:odd-row={!isEven}>
                                 <td class="talent-name">{talent.name}</td>
-                                <td class="talent-description">{formatDescription(talent.description)}</td>
                                 <td class="talent-type">{talent.type}</td>
+                                <td class="talent-description">{formatDescription(talent.description)}</td>
                             </tr>
                         {/each}
                     </tbody>
@@ -158,11 +224,6 @@
 <style lang="scss">
     .talents-section {
         padding: 1rem 0.5rem;
-        border-width: 0.15rem;
-        border-style: solid;
-        border-image: 
-            linear-gradient(to bottom, rgba(0, 0, 0, 0), rgb(var(--accent)), rgba(0, 0, 0, 0)) 1 100%;
-        border-right: none;
     }
 
     h2 {
@@ -202,9 +263,10 @@
     }
 
     .checkbox-list {
-        display: flex;
-        flex-direction: column;
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
         gap: 0.5rem;
+        column-gap: 1.5rem;
     }
 
     .checkbox-item {
@@ -240,6 +302,33 @@
         table-layout: fixed;
     }
 
+    .talents-table thead {
+        border-bottom: 2px solid rgba(var(--accent), 0.4);
+    }
+
+    .col-name {
+        width: 28%;
+    }
+
+    .col-type {
+        width: 10%;
+    }
+
+    .col-description {
+        width: 62%;
+    }
+
+    .header-cell {
+        text-shadow: var(--shadow);
+        color: rgb(var(--accent));
+        font-size: 0.9rem;
+        font-weight: 600;
+        padding: 0.5rem 0.75rem;
+        text-align: left;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
     .talents-table tbody tr {
         border-bottom: 1px solid rgba(var(--accent), 0.2);
         transition: background 0.2s ease;
@@ -258,37 +347,40 @@
     }
 
     .talents-table td {
-        white-space: pre-wrap;
         text-shadow: var(--shadow);
         padding: 0.5rem 0.75rem;
         color: rgba(var(--primary), 0.9);
         vertical-align: top;
         word-wrap: break-word;
-    }
-
-    .talent-name {
-        font-size: 1rem;
-        font-weight: 500;
-        color: rgba(var(--primary), 0.85);
-        text-align: left;
-        width: 30%;
-    }
-
-    .talent-description {
-        font-size: 0.9rem;
-        color: rgba(var(--primary), 0.8);
-        text-align: left;
-        width: 55%;
         line-height: 1.4;
     }
 
+    .talent-name {
+        font-size: 0.95rem;
+        font-weight: 500;
+        color: rgba(var(--primary), 0.85);
+        text-align: left;
+        width: 28%;
+        padding-right: 0.5rem;
+    }
+
     .talent-type {
-        font-size: 0.85rem;
+        font-size: 0.8rem;
         color: rgba(var(--accent), 0.9);
-        text-align: center;
-        width: 15%;
+        text-align: left;
+        width: 10%;
         text-transform: uppercase;
         font-weight: 500;
+        padding: 0.5rem 0.25rem;
+    }
+
+    .talent-description {
+        font-size: 0.85rem;
+        color: rgba(var(--primary), 0.8);
+        text-align: left;
+        width: 62%;
+        line-height: 1.4;
+        padding-left: 0.5rem;
     }
 
     .empty-state {
@@ -297,5 +389,49 @@
         font-style: italic;
         padding: 1rem;
         font-size: 0.9rem;
+    }
+
+    .tooltip-trigger {
+        cursor: help;
+    }
+
+    .tooltip {
+        position: fixed;
+        z-index: 10000;
+        max-width: 300px;
+        padding: 0.75rem 1rem;
+        background: rgba(20, 20, 30, 0.98);
+        border: 2px solid rgb(var(--accent));
+        border-radius: 0.5rem;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+        pointer-events: none;
+        transform: translate(-50%, calc(-100% - 10px));
+        margin-left: 10px;
+        margin-top: -10px;
+    }
+
+    .tooltip-title {
+        font-weight: 700;
+        font-size: 1rem;
+        color: rgb(var(--accent));
+        margin-bottom: 0.5rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    .tooltip-content {
+        font-size: 0.875rem;
+        color: rgba(var(--primary), 0.9);
+        line-height: 1.5;
+    }
+
+    .tooltip::after {
+        content: '';
+        position: absolute;
+        bottom: -8px;
+        left: 50%;
+        transform: translateX(-50%);
+        border: 8px solid transparent;
+        border-top-color: rgb(var(--accent));
     }
 </style>

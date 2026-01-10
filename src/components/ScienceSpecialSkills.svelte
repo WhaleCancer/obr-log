@@ -7,7 +7,7 @@
 
     // Export
     export let stats: AFFSheetStats[] = [];
-    export let currentSkill: number = 0; // Current SKILL value from Characteristics
+    export let currentSkill: number = 0; // Current SKILL or PSIONICS value (whichever is higher) from Characteristics
 
     $: editable = $currentPlayerId === $viewingPlayerId;
     
@@ -15,19 +15,18 @@
     let showDiceRoller: boolean = false;
     let selectedSkill: { name: string; total: number } | null = null;
     
-    // Skill descriptions for tooltips (note: skill names match what's on the sheet, which uses "Pilot - Air" format)
+    // Skill descriptions for tooltips (Science skills only)
     const skillDescriptions: Record<string, string> = {
-        "Acrobatics": "Gymnastic agility and coordination for navigating complex environments. Essential for zero-gravity work, shipboard maintenance, and evading obstacles. Enables tightrope work, swinging across gaps, and maintaining balance in unstable conditions.",
-        "Climb": "Proficiency in scaling vertical surfaces including ship hulls, building exteriors, and natural rock faces. Essential for away team missions requiring access to difficult locations or emergency escape situations.",
-        "Dodge": "Evasive maneuvering to avoid incoming phaser fire, explosions, and physical attacks. This skill allows characters to reduce or avoid damage by not being where the attack is aimed. Essential for combat survival.",
-        "Jump": "Skill in leaping across gaps, obstacles, and hazards. Covers long jumps, high jumps, and precision landings. Useful in shipboard combat and planetary exploration where mobility can mean survival.",
-        "Pilot - Air": "Proficiency in operating atmospheric flight vehicles including shuttlecraft in atmosphere, aircars, and various aircraft. Essential for planetary operations, aerial reconnaissance, and atmospheric transport missions. Includes evasive maneuvers and precision flying.",
-        "Pilot - Ground": "Operating ground vehicles including hovercraft, wheeled transports, tracked vehicles, and walking mechs. Essential for planetary surface operations and base transportation. Covers various propulsion systems and vehicle types.",
-        "Pilot - Space": "Operating spacecraft from small fighters to massive starships. Essential for navigation, maneuvering, and combat operations in space. Requires understanding of inertial dampeners, warp drive systems, and tactical maneuvering. The most prestigious piloting skill in Starfleet.",
-        "Pilot - Water": "Operating watercraft including surface vessels, submarines, and aquatic transports. Essential for missions on water worlds and aquatic environments. Covers both surface and underwater navigation and vehicle operation.",
-        "Ride": "Proficiency in riding alien mounts and domesticated creatures for transportation. Useful on primitive worlds or when vehicles are unavailable. Covers various mount types and riding techniques across different planetary environments.",
-        "Run": "Sustained running ability for pursuit, evasion, and rapid movement across terrain. Essential for away team members who may need to escape danger or cover ground quickly during missions.",
-        "Swim": "Aquatic mobility for navigating water environments. Essential for missions involving oceans, lakes, or flooded areas. Covers efficient swimming techniques, endurance, and underwater movement. Critical when aquatic vehicles fail or are unavailable."
+        "Archaeology": "Study of ancient civilizations through artifacts, ruins, and historical evidence. Essential for understanding lost cultures, deciphering ancient technologies, and preserving historical knowledge. Covers excavation techniques, artifact analysis, and cultural interpretation.",
+        "Biology": "Study of living organisms including anatomy, physiology, and evolution. Covers both familiar and alien life forms, making the Hero a xenobiologist. Essential for medical diagnosis, understanding alien species, and biological research across different worlds.",
+        "Botany": "Study of plant life across different worlds and environments. Covers identification, cultivation, and properties of alien flora. Essential for agriculture, identifying edible or dangerous plants, and understanding planetary ecosystems.",
+        "Chemistry": "Study of matter, molecular structure, and chemical reactions. Essential for synthesizing compounds, analyzing substances, creating medicines, and understanding material properties. Useful for forensic analysis and scientific research.",
+        "Ecology": "Study of ecosystems and the relationships between organisms and their environments. Essential for understanding planetary biospheres, environmental hazards, and ecosystem stability. Useful for terraforming assessment and environmental protection missions.",
+        "Geology": "Study of planetary structure, formation, and geological processes. Essential for assessing planetary stability, identifying mineral resources, and understanding geological hazards. Useful for mining operations and planetary survey missions.",
+        "Meteorology": "Study of atmospheric conditions, weather patterns, and climate systems. Essential for predicting weather hazards, understanding atmospheric composition, and planning operations based on environmental conditions. Useful for planetary exploration and colonization.",
+        "Oceanography": "Study of oceanic systems including currents, tides, and marine ecosystems. Essential for missions involving water worlds, underwater exploration, and understanding marine environments. Covers both familiar and alien aquatic systems.",
+        "Physics": "Study of fundamental physical laws including matter, spacetime, energy, and forces. Essential for understanding warp drive, subspace theory, and advanced technologies. Critical for theoretical research and engineering applications.",
+        "Zoology": "Study of animal life including behavior, ecology, evolution, and anatomy. Covers both familiar and alien species. Essential for understanding animal behavior, identifying dangerous creatures, and xenozoological research. Useful for exploration and wildlife encounters."
     };
     
     // Helper function to get description for a skill
@@ -41,7 +40,7 @@
         return isNaN(num) ? 0 : num;
     }
     
-    // Helper function to calculate total (ranks + current skill)
+    // Helper function to calculate total (ranks + current skill/psionics)
     function calculateTotal(ranksValue: string): number {
         const ranks = parseNumber(ranksValue);
         return ranks + currentSkill;
@@ -49,18 +48,26 @@
     
     // Track which tooltip is shown
     let hoveredSkill: string | null = null;
+    let showHeaderTooltip: boolean = false;
     let tooltipElement: HTMLElement | null = null;
     let tooltipPosition = { x: 0, y: 0 };
     
     function handleMouseEnter(event: MouseEvent, skillName: string) {
         hoveredSkill = skillName;
+        showHeaderTooltip = false;
         const target = event.currentTarget as HTMLElement;
         tooltipElement = target;
         updateTooltipPosition(event);
     }
     
+    function handleHeaderMouseEnter(event: MouseEvent) {
+        showHeaderTooltip = true;
+        hoveredSkill = null;
+        updateTooltipPosition(event);
+    }
+    
     function handleMouseMove(event: MouseEvent) {
-        if (hoveredSkill) {
+        if (hoveredSkill || showHeaderTooltip) {
             updateTooltipPosition(event);
         }
     }
@@ -74,6 +81,10 @@
         tooltipElement = null;
     }
     
+    function handleHeaderMouseLeave() {
+        showHeaderTooltip = false;
+    }
+    
     function handleDiceClick(skillName: string, skillTotal: number) {
         selectedSkill = { name: skillName, total: skillTotal };
         showDiceRoller = true;
@@ -85,14 +96,17 @@
     }
 </script>
 
-<div class="movement-skills-container">
-    <table class="movement-skills-table">
+<div class="science-skills-container">
+    <table class="science-skills-table">
         <thead>
             <tr>
                 <th class="header-cell dice-column">🎲</th>
-                <th class="header-cell header-left">MOVEMENT SPECIAL SKILL</th>
+                <th class="header-cell header-left">SCIENCE SPECIAL SKILL</th>
                 <th class="header-cell">{#if editable && $editing}✏️ {/if}Ranks</th>
-                <th class="header-cell">SKILL</th>
+                <th class="header-cell tooltip-trigger header-skill-psionics"
+                    on:mouseenter={handleHeaderMouseEnter}
+                    on:mouseleave={handleHeaderMouseLeave}
+                    on:mousemove={handleMouseMove}>SKILL/PSIONICS</th>
                 <th class="header-cell">Total</th>
             </tr>
         </thead>
@@ -138,6 +152,13 @@
     </div>
 {/if}
 
+{#if showHeaderTooltip}
+    <div class="tooltip" style="left: {tooltipPosition.x}px; top: {tooltipPosition.y}px">
+        <div class="tooltip-title">SKILL/PSIONICS</div>
+        <div class="tooltip-content">The higher value between SKILL and PSIONICS is automatically used for Science Special Skills calculations.</div>
+    </div>
+{/if}
+
 {#if showDiceRoller && selectedSkill}
     <DiceRoller 
         skillName={selectedSkill.name}
@@ -147,7 +168,7 @@
 {/if}
 
 <style lang="scss">
-    .movement-skills-container {
+    .science-skills-container {
         padding: 0 0.5rem;
         margin: 0;
         display: block;
@@ -156,7 +177,7 @@
         box-sizing: border-box;
     }
 
-    .movement-skills-table {
+    .science-skills-table {
         border-collapse: collapse;
         border-spacing: 0;
         width: 100%;
@@ -166,13 +187,13 @@
         box-sizing: border-box;
     }
 
-    .movement-skills-table thead {
+    .science-skills-table thead {
         border-bottom: 2px solid rgba(var(--accent), 0.4);
         margin: 0;
         padding: 0;
     }
     
-    .movement-skills-table tbody {
+    .science-skills-table tbody {
         margin: 0;
         padding: 0;
     }
@@ -202,36 +223,40 @@
         width: calc((100% - 3rem) * 0.15);
     }
 
-    .movement-skills-table tbody tr {
+    .header-cell.header-skill-psionics {
+        cursor: help;
+    }
+
+    .science-skills-table tbody tr {
         border-bottom: 1px solid rgba(var(--accent), 0.2);
         transition: background 0.2s ease;
     }
 
-    .movement-skills-table tbody tr.even-row:not(.has-ranks) {
+    .science-skills-table tbody tr.even-row:not(.has-ranks) {
         background: rgba(var(--accent), 0.05);
     }
 
-    .movement-skills-table tbody tr.odd-row:not(.has-ranks) {
+    .science-skills-table tbody tr.odd-row:not(.has-ranks) {
         background: rgba(var(--accent), 0.1);
     }
 
-    .movement-skills-table tbody tr.even-row.has-ranks {
+    .science-skills-table tbody tr.even-row.has-ranks {
         background: rgba(100, 200, 100, 0.15);
     }
 
-    .movement-skills-table tbody tr.odd-row.has-ranks {
+    .science-skills-table tbody tr.odd-row.has-ranks {
         background: rgba(100, 200, 100, 0.25);
     }
 
-    .movement-skills-table tbody tr:hover:not(.has-ranks) {
+    .science-skills-table tbody tr:hover:not(.has-ranks) {
         background: rgba(var(--accent), 0.2);
     }
 
-    .movement-skills-table tbody tr:hover.has-ranks {
+    .science-skills-table tbody tr:hover.has-ranks {
         background: rgba(100, 200, 100, 0.35);
     }
 
-    .movement-skills-table td {
+    .science-skills-table td {
         white-space: pre-wrap;
         text-shadow: var(--shadow);
         padding: 0.5rem 0.75rem;

@@ -2,7 +2,6 @@
     // Import components
     import AddSection from "./AddSection.svelte";
     import EditToggle from "./EditToggle.svelte";
-    import ThemeEditor from "./ThemeEditor.svelte";
     import { currentPlayerId, viewingPlayerId } from "../services/OBRHelper";
 
     // Import stores and functions
@@ -19,10 +18,9 @@
 {#if $currentPlayerId === $viewingPlayerId}
 <div>
     <button class="action-button new-character-button" on:click={handleNewCharacter} title="Reset character to default values">
-        New Character
+        📄 New
     </button>
     <FileManager/>
-    <ThemeEditor/>
     <AddSection bind:sections={$sheet.sections}/>
     <EditToggle/>
 </div>

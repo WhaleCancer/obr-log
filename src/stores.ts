@@ -3,7 +3,7 @@ import { localStore } from './localStore';
 
 const initialSheet = {
     id: 1,
-    name: "Star Trek Character",
+    name: "",
     notes: "Welcome to your Star Trek character sheet!\n\nTo use:\n• Click on values to edit them directly.\n• Click EDIT to modify stat names, section titles, and add/remove entries.\n• Characteristics have separate Initial and Current values.\n• Special Skills are organized by category.\n• EXPORT your character to JSON and IMPORT it back anytime.\n• GMs can view all player sheets via the tabs at the top.",
     portrait: "",
     sections: [
@@ -19,15 +19,25 @@ const initialSheet = {
           {
             id: 2,
             name: "Species",
-            value: ""
+            value: "Human"
           },
           {
             id: 3,
             name: "Rank",
-            value: ""
+            value: "Lieutenant Commander"
           },
           {
             id: 4,
+            name: "Division",
+            value: "Command"
+          },
+          {
+            id: 5,
+            name: "Assignment",
+            value: "USS Castor"
+          },
+          {
+            id: 6,
             name: "Experience",
             value: "0"
           }
@@ -178,6 +188,62 @@ const initialSheet = {
       },
       {
         id: 6,
+        name: "Science Special Skills",
+        stats: [
+          {
+            id: 1,
+            name: "Archaeology",
+            value: "0"
+          },
+          {
+            id: 2,
+            name: "Biology",
+            value: "0"
+          },
+          {
+            id: 3,
+            name: "Botany",
+            value: "0"
+          },
+          {
+            id: 4,
+            name: "Chemistry",
+            value: "0"
+          },
+          {
+            id: 5,
+            name: "Ecology",
+            value: "0"
+          },
+          {
+            id: 6,
+            name: "Geology",
+            value: "0"
+          },
+          {
+            id: 7,
+            name: "Meteorology",
+            value: "0"
+          },
+          {
+            id: 8,
+            name: "Oceanography",
+            value: "0"
+          },
+          {
+            id: 9,
+            name: "Physics",
+            value: "0"
+          },
+          {
+            id: 10,
+            name: "Zoology",
+            value: "0"
+          }
+        ]
+      },
+      {
+        id: 7,
         name: "Knowledge Special Skills",
         stats: [
           {
@@ -187,138 +253,88 @@ const initialSheet = {
           },
           {
             id: 2,
-            name: "Archaeology",
-            value: "0"
-          },
-          {
-            id: 3,
             name: "Astronavigation",
             value: "0"
           },
           {
-            id: 4,
+            id: 3,
             name: "Bargain",
             value: "0"
           },
           {
-            id: 5,
-            name: "Biology",
-            value: "0"
-          },
-          {
-            id: 6,
-            name: "Botany",
-            value: "0"
-          },
-          {
-            id: 7,
+            id: 4,
             name: "Bureaucracy",
             value: "0"
           },
           {
-            id: 8,
-            name: "Chemistry",
-            value: "0"
-          },
-          {
-            id: 9,
+            id: 5,
             name: "Communications",
             value: "0"
           },
           {
-            id: 10,
+            id: 6,
             name: "Computers",
             value: "0"
           },
           {
-            id: 11,
-            name: "Ecology",
-            value: "0"
-          },
-          {
-            id: 12,
+            id: 7,
             name: "Engineering",
             value: "0"
           },
           {
-            id: 13,
+            id: 8,
             name: "Etiquette",
             value: "0"
           },
           {
-            id: 14,
+            id: 9,
             name: "Evaluate",
             value: "0"
           },
           {
-            id: 15,
-            name: "Geology",
-            value: "0"
-          },
-          {
-            id: 16,
+            id: 10,
             name: "Languages",
             value: "0"
           },
           {
-            id: 17,
+            id: 11,
             name: "Law",
             value: "0"
           },
           {
-            id: 18,
+            id: 12,
             name: "Leadership",
             value: "0"
           },
           {
-            id: 19,
+            id: 13,
             name: "Medicine",
             value: "0"
           },
           {
-            id: 20,
-            name: "Meteorology",
-            value: "0"
-          },
-          {
-            id: 21,
-            name: "Oceanography",
-            value: "0"
-          },
-          {
-            id: 22,
-            name: "Physics",
-            value: "0"
-          },
-          {
-            id: 23,
+            id: 14,
             name: "Planetary Navigation",
             value: "0"
           },
           {
-            id: 24,
+            id: 15,
             name: "Sensors",
             value: "0"
           },
           {
-            id: 25,
+            id: 16,
             name: "Survival",
             value: "0"
           },
           {
-            id: 26,
+            id: 17,
             name: "Trade Knowledge",
-            value: "0"
-          },
-          {
-            id: 27,
-            name: "Zoology",
             value: "0"
           }
         ]
       },
       {
-        id: 7,
+        id: 8,
         name: "Psionic Special Skills",
         stats: [
           {
@@ -364,7 +380,7 @@ const initialSheet = {
         ]
       },
       {
-        id: 8,
+        id: 9,
         name: "Characteristics",
         stats: [
           {
@@ -386,16 +402,21 @@ const initialSheet = {
             id: 4,
             name: "PSIONICS",
             value: "0/0"
+          },
+          {
+            id: 5,
+            name: "PSI POINTS",
+            value: "0/0"
           }
         ]
       },
       {
-        id: 9,
+        id: 10,
         name: "Talents",
         stats: []
       },
       {
-        id: 10,
+        id: 11,
         name: "Drawbacks",
         stats: [
           {
@@ -410,9 +431,29 @@ const initialSheet = {
 const initialTheme = {
     primary:        "255,255,255",
     secondary:      "42,42,42",
-    accent:         "255,213,140",
+    accent:         "255,213,140", // Gold (Command Division default)
     textShadow:     "1px 1px 2px #000000"
 };
+
+// Division color mappings (accent colors)
+const divisionColors: Record<string, string> = {
+    "Command": "255,213,140",      // Gold
+    "Sciences": "107,180,255",     // Blue
+    "Medical": "107,180,255",      // Blue (same as Sciences)
+    "Engineering": "255,100,100",  // Red
+    "Security": "255,100,100"      // Red (same as Engineering)
+};
+
+// Function to get theme colors based on division
+export function getThemeForDivision(division: string) {
+    const accentColor = divisionColors[division] || divisionColors["Command"];
+    return {
+        primary: initialTheme.primary,
+        secondary: initialTheme.secondary,
+        accent: accentColor,
+        textShadow: initialTheme.textShadow
+    };
+}
 
 
 // Export function to get a fresh copy of initial sheet

@@ -23,7 +23,7 @@
     <h2>{section.name}</h2>
     {/if}
     <Stats bind:stats={section.stats}/>
-    {#if editable && $editing}
+    {#if editable && !$editing}
     <RemoveSection bind:section={section} on:removeSection/>
     {/if}
 </div>

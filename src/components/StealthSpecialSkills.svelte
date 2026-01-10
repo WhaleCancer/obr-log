@@ -3,12 +3,17 @@
     import { editing } from "../stores";
     import { currentPlayerId, viewingPlayerId } from "../services/OBRHelper";
     import type { AFFSheetStats } from '../types/sheet.type';
+    import DiceRoller from './DiceRoller.svelte';
 
     // Export
-    export let stats;
+    export let stats: AFFSheetStats[] = [];
     export let currentSkill: number = 0; // Current SKILL value from Characteristics
 
     $: editable = $currentPlayerId === $viewingPlayerId;
+    
+    // Dice roller state
+    let showDiceRoller: boolean = false;
+    let selectedSkill: { name: string; total: number } | null = null;
     
     // Skill descriptions for tooltips
     const skillDescriptions: Record<string, string> = {
@@ -63,14 +68,25 @@
         hoveredSkill = null;
         tooltipElement = null;
     }
+    
+    function handleDiceClick(skillName: string, skillTotal: number) {
+        selectedSkill = { name: skillName, total: skillTotal };
+        showDiceRoller = true;
+    }
+    
+    function handleDiceRollerClose() {
+        showDiceRoller = false;
+        selectedSkill = null;
+    }
 </script>
 
 <div class="stealth-skills-container">
     <table class="stealth-skills-table">
         <thead>
             <tr>
+                <th class="header-cell dice-column">🎲</th>
                 <th class="header-cell header-left">STEALTH SPECIAL SKILL</th>
-                <th class="header-cell">Ranks</th>
+                <th class="header-cell">{#if editable && $editing}✏️ {/if}Ranks</th>
                 <th class="header-cell">SKILL</th>
                 <th class="header-cell">Total</th>
             </tr>
@@ -79,21 +95,21 @@
             {#each stats as stat, index (stat.id)}
             {@const hasRanks = parseNumber(stat.value) > 0}
             {@const isEven = index % 2 === 0}
+            {@const skillTotal = calculateTotal(stat.value)}
             <tr class:has-ranks={hasRanks} class:even-row={isEven} class:odd-row={!isEven}>
-                {#if editable && $editing}
-                <td class="skill-name" 
-                    contenteditable="true" 
-                    bind:innerText={stat.name}
-                    on:mouseenter={(e) => handleMouseEnter(e, stat.name)}
-                    on:mouseleave={handleMouseLeave}
-                    on:mousemove={handleMouseMove}>{stat.name}</td>
-                {:else}
+                <td class="dice-cell">
+                    <button 
+                        class="dice-button" 
+                        on:click={() => handleDiceClick(stat.name, skillTotal)}
+                        title="Roll dice for {stat.name}">
+                        🎲
+                    </button>
+                </td>
                 <td class="skill-name tooltip-trigger"
                     on:mouseenter={(e) => handleMouseEnter(e, stat.name)}
                     on:mouseleave={handleMouseLeave}
                     on:mousemove={handleMouseMove}>{stat.name}</td>
-                {/if}
-                {#if editable}
+                {#if editable && $editing}
                 <td class="skill-value ranks" 
                     contenteditable="true" 
                     bind:innerText={stat.value}
@@ -103,7 +119,7 @@
                 <td class="skill-value ranks">{stat.value}</td>
                 {/if}
                 <td class="skill-value current-skill">{currentSkill}</td>
-                <td class="skill-value total">{calculateTotal(stat.value)}</td>
+                <td class="skill-value total">{skillTotal}</td>
             </tr>
             {/each}
         </tbody>
@@ -117,20 +133,43 @@
     </div>
 {/if}
 
+{#if showDiceRoller && selectedSkill}
+    <DiceRoller 
+        skillName={selectedSkill.name}
+        skillTotal={selectedSkill.total}
+        on:close={handleDiceRollerClose}
+    />
+{/if}
+
 <style lang="scss">
     .stealth-skills-container {
-        padding: 0 0.5rem 0 0.5rem;
+        padding: 0 0.5rem;
+        margin: 0;
+        display: block;
+        font-size: initial;
+        width: 100%;
+        box-sizing: border-box;
     }
 
     .stealth-skills-table {
         border-collapse: collapse;
+        border-spacing: 0;
         width: 100%;
-        margin: 0 auto;
+        margin: 0;
+        padding: 0;
         table-layout: fixed;
+        box-sizing: border-box;
     }
 
     .stealth-skills-table thead {
         border-bottom: 2px solid rgba(var(--accent), 0.4);
+        margin: 0;
+        padding: 0;
+    }
+    
+    .stealth-skills-table tbody {
+        margin: 0;
+        padding: 0;
     }
 
     .header-cell {
@@ -144,13 +183,18 @@
         letter-spacing: 0.05em;
     }
 
-    .header-cell.header-left {
-        text-align: left;
-        width: 55%;
+    .header-cell.dice-column {
+        width: 3rem;
+        padding: 0.5rem;
     }
 
-    .header-cell:not(.header-left) {
-        width: 15%;
+    .header-cell.header-left {
+        text-align: left;
+        width: calc((100% - 3rem) * 0.55);
+    }
+
+    .header-cell:not(.header-left):not(.dice-column) {
+        width: calc((100% - 3rem) * 0.15);
     }
 
     .stealth-skills-table tbody tr {
@@ -190,12 +234,40 @@
         vertical-align: middle;
     }
 
+    .dice-cell {
+        width: 3rem;
+        padding: 0.5rem;
+        text-align: center;
+    }
+    
+    .dice-button {
+        background: transparent;
+        border: 1px solid rgba(var(--accent), 0.5);
+        border-radius: 0.25rem;
+        color: rgb(var(--accent));
+        font-size: 1.2rem;
+        cursor: pointer;
+        padding: 0.25rem 0.5rem;
+        transition: all 0.2s ease;
+        width: 100%;
+        
+        &:hover {
+            background: rgba(var(--accent), 0.2);
+            border-color: rgb(var(--accent));
+            transform: scale(1.1);
+        }
+        
+        &:active {
+            transform: scale(0.95);
+        }
+    }
+
     .skill-name {
         font-size: 1rem;
         font-weight: 500;
         color: rgba(var(--primary), 0.85);
         text-align: left;
-        width: 55%;
+        width: calc((100% - 3rem) * 0.55);
         overflow: hidden;
         text-overflow: ellipsis;
     }
@@ -205,7 +277,7 @@
         font-weight: 600;
         text-align: center;
         color: rgba(var(--primary), 1);
-        width: 15%;
+        width: calc((100% - 3rem) * 0.15);
     }
 
     .skill-value.ranks {
