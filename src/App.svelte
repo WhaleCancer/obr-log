@@ -38,7 +38,7 @@
 
   </main>
   <footer>
-    <a target="_blank" href="https://github.com/affwiki/aff-character-sheet">AFF Character Sheet</a>
+    <a target="_blank" href="https://github.com/WhaleCancer/star-trek-character-sheet">Star Trek Character Sheet</a>
   </footer>
 </Themer>
 

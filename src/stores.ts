@@ -3,8 +3,8 @@ import { localStore } from './localStore';
 
 const initialSheet = {
     id: 1,
-    name: "AFF Hero",
-    notes: "Welcome to your Advanced Fighting Fantasy character sheet!\n\nTo use:\n• Click on values in the right column to edit them directly.\n• Click EDIT to modify stat names, section titles, and add/remove entries.\n• Characteristics track both Initial and Current values (format: Initial/Current).\n• Special Skills are organized by category.\n• EXPORT your character to JSON and IMPORT it back anytime.\n• GMs can view all player sheets via the tabs at the top.",
+    name: "Star Trek Character",
+    notes: "Welcome to your Star Trek character sheet!\n\nTo use:\n• Click on values in the right column to edit them directly.\n• Click EDIT to modify stat names, section titles, and add/remove entries.\n• Characteristics track both Initial and Current values (format: Initial/Current).\n• Special Skills are organized by category.\n• EXPORT your character to JSON and IMPORT it back anytime.\n• GMs can view all player sheets via the tabs at the top.",
     sections: [
       {
         id: 1,
@@ -17,44 +17,18 @@ const initialSheet = {
           },
           {
             id: 2,
-            name: "Race",
+            name: "Species",
             value: ""
           },
           {
             id: 3,
-            name: "Grade",
+            name: "Rank",
             value: ""
           },
           {
             id: 4,
             name: "Experience",
             value: "0"
-          }
-        ]
-      },
-      {
-        id: 2,
-        name: "Characteristics",
-        stats: [
-          {
-            id: 1,
-            name: "SKILL",
-            value: "0/0"
-          },
-          {
-            id: 2,
-            name: "STAMINA",
-            value: "0/0"
-          },
-          {
-            id: 3,
-            name: "LUCK",
-            value: "0/0"
-          },
-          {
-            id: 4,
-            name: "MAGIC",
-            value: "0/0"
           }
         ]
       },
@@ -315,6 +289,32 @@ const initialSheet = {
       },
       {
         id: 8,
+        name: "Characteristics",
+        stats: [
+          {
+            id: 1,
+            name: "SKILL",
+            value: "0/0"
+          },
+          {
+            id: 2,
+            name: "STAMINA",
+            value: "0/0"
+          },
+          {
+            id: 3,
+            name: "LUCK",
+            value: "0/0"
+          },
+          {
+            id: 4,
+            name: "PSIONICS",
+            value: "0/0"
+          }
+        ]
+      },
+      {
+        id: 9,
         name: "Talents",
         stats: [
           {
@@ -325,7 +325,7 @@ const initialSheet = {
         ]
       },
       {
-        id: 9,
+        id: 10,
         name: "Drawbacks",
         stats: [
           {
@@ -345,5 +345,5 @@ const initialTheme = {
 };
 
 export const editing = writable(false);
-export const sheet = localStore('aff-character-sheet', initialSheet);
-export const theme = localStore('aff-character-sheet-theme', initialTheme);
+export const sheet = localStore('star-trek-character-sheet', initialSheet);
+export const theme = localStore('star-trek-character-sheet-theme', initialTheme);
