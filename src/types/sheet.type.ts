@@ -2,6 +2,7 @@ export type AFFSheet = {
     id: number;
     name: string;
     notes: string;
+    portrait?: string; // Base64 image data
     sections: Array<AFFSheetSection>;
 }
 

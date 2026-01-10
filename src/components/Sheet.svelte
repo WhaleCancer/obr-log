@@ -5,6 +5,7 @@
     import Notes from './Notes.svelte';
     import Characteristics from './Characteristics.svelte';
     import Section from './Section.svelte';
+    import CharacterInfo from './CharacterInfo.svelte';
     import CombatSpecialSkills from './CombatSpecialSkills.svelte';
     import RemoveSection from './RemoveSection.svelte';
     import { currentPlayerId, viewingPlayerId } from "../services/OBRHelper";
@@ -15,6 +16,12 @@
     
     $: editable = $currentPlayerId === $viewingPlayerId; 
     let player = "";
+
+    // Handle portrait changes
+    function handlePortraitChange(event: CustomEvent<string>) {
+        sheet.portrait = event.detail;
+        sheet = sheet; // Trigger reactivity
+    }
 
     // Exports
     export let sheet:AFFSheet;
@@ -71,7 +78,7 @@
     
     <!-- Character Info Section -->
     {#if characterInfoSection}
-        <Section bind:section={characterInfoSection} on:removeSection={e => removeSection(e.detail)}/>
+        <CharacterInfo bind:section={characterInfoSection} portrait={sheet.portrait || ""} on:portraitChange={handlePortraitChange} on:removeSection={e => removeSection(e.detail)}/>
     {/if}
     
     <!-- Characteristics Section - Right after Character Info -->
