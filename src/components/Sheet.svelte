@@ -10,6 +10,7 @@
     import MovementSpecialSkills from './MovementSpecialSkills.svelte';
     import StealthSpecialSkills from './StealthSpecialSkills.svelte';
     import KnowledgeSpecialSkills from './KnowledgeSpecialSkills.svelte';
+    import PsionicSpecialSkills from './PsionicSpecialSkills.svelte';
     import RemoveSection from './RemoveSection.svelte';
     import { currentPlayerId, viewingPlayerId } from "../services/OBRHelper";
     import type { AFFSheet } from '../types/sheet.type';
@@ -33,6 +34,7 @@
     $: characteristicsSection = sheet.sections.find(s => s.name === "Characteristics");
     $: characterInfoSection = sheet.sections.find(s => s.name === "Character Info");
     $: combatSpecialSkillsSection = sheet.sections.find(s => s.name === "Combat Special Skills");
+    $: psionicSpecialSkillsSection = sheet.sections.find(s => s.name === "Psionic Special Skills");
     $: movementSpecialSkillsSection = sheet.sections.find(s => s.name === "Movement Special Skills");
     $: stealthSpecialSkillsSection = sheet.sections.find(s => s.name === "Stealth Special Skills");
     $: knowledgeSpecialSkillsSection = sheet.sections.find(s => s.name === "Knowledge Special Skills");
@@ -42,6 +44,7 @@
         s.name !== "Talents" && 
         s.name !== "Drawbacks" &&
         s.name !== "Combat Special Skills" &&
+        s.name !== "Psionic Special Skills" &&
         s.name !== "Movement Special Skills" &&
         s.name !== "Stealth Special Skills" &&
         s.name !== "Knowledge Special Skills"
@@ -101,6 +104,18 @@
             {#if editable && $editing}
                 <div class="remove-section-container">
                     <RemoveSection bind:section={combatSpecialSkillsSection} on:removeSection={e => removeSection(e.detail)}/>
+                </div>
+            {/if}
+        </div>
+    {/if}
+    
+    <!-- Psionic Special Skills Section (Special handling) -->
+    {#if psionicSpecialSkillsSection}
+        <div class="psionic-skills-section-wrapper">
+            <PsionicSpecialSkills bind:stats={psionicSpecialSkillsSection.stats} currentSkill={currentSkill}/>
+            {#if editable && $editing}
+                <div class="remove-section-container">
+                    <RemoveSection bind:section={psionicSpecialSkillsSection} on:removeSection={e => removeSection(e.detail)}/>
                 </div>
             {/if}
         </div>
@@ -181,6 +196,10 @@
     }
     .combat-skills-section-wrapper {
         margin: 1rem 0 0 0;
+        width: 100%;
+    }
+    .psionic-skills-section-wrapper {
+        margin: 0 0 0 0;
         width: 100%;
     }
     .movement-skills-section-wrapper {

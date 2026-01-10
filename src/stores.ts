@@ -319,36 +319,46 @@ const initialSheet = {
       },
       {
         id: 7,
-        name: "Magical Special Skills",
+        name: "Psionic Special Skills",
         stats: [
           {
             id: 1,
-            name: "Magic-Minor",
+            name: "Emotional Suppression",
             value: "0"
           },
           {
             id: 2,
-            name: "Magic-Priestly",
+            name: "Logic Enhanced",
             value: "0"
           },
           {
             id: 3,
-            name: "Magic-Sorcery",
+            name: "Mental Discipline",
             value: "0"
           },
           {
             id: 4,
-            name: "Magic-Wizardry",
+            name: "Mind Meld",
             value: "0"
           },
           {
             id: 5,
-            name: "Magic Lore",
+            name: "Mind Shield",
             value: "0"
           },
           {
             id: 6,
-            name: "Second Sight",
+            name: "Nerve Pinch",
+            value: "0"
+          },
+          {
+            id: 7,
+            name: "Precognition",
+            value: "0"
+          },
+          {
+            id: 8,
+            name: "Telepathy",
             value: "0"
           }
         ]
