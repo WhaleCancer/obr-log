@@ -392,6 +392,17 @@ if (stored) {
     }
 }
 
+// Export function to get a fresh copy of initial sheet
+export function getInitialSheet() {
+    // Return a deep copy of initialSheet to avoid reference issues
+    return JSON.parse(JSON.stringify(initialSheet));
+}
+
+// Export function to reset sheet to initial values
+export function resetSheet() {
+    sheet.set(getInitialSheet());
+}
+
 export const editing = writable(false);
 export const sheet = localStore(STORAGE_KEY, initialSheet);
 export const theme = localStore('star-trek-character-sheet-theme', initialTheme);
