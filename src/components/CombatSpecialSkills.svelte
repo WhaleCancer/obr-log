@@ -27,7 +27,7 @@
     <table class="combat-skills-table">
         <thead>
             <tr>
-                <th class="header-cell">Skill</th>
+                <th class="header-cell header-left">SPECIAL SKILL</th>
                 <th class="header-cell">Ranks</th>
                 <th class="header-cell">CURRENT SKILL</th>
                 <th class="header-cell">Total</th>
@@ -81,6 +81,10 @@
         text-align: center;
         text-transform: uppercase;
         letter-spacing: 0.05em;
+    }
+
+    .header-cell.header-left {
+        text-align: left;
     }
 
     .combat-skills-table tbody tr {
