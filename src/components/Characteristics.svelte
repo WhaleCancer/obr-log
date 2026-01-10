@@ -194,7 +194,7 @@
     .header-cell {
         text-shadow: var(--shadow);
         color: rgb(var(--accent));
-        font-size: 0.9rem;
+        font-size: 0.8rem;
         font-weight: 600;
         padding: 0.5rem 0.75rem;
         text-align: center;
@@ -271,7 +271,7 @@
             font-size: 1.6rem;
         }
         .header-cell {
-            font-size: 1.1rem;
+            font-size: 1.0rem;
         }
     }
 
@@ -283,7 +283,7 @@
             font-size: 1.8rem;
         }
         .header-cell {
-            font-size: 1.2rem;
+            font-size: 1.1rem;
         }
     }
 </style>

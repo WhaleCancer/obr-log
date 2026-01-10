@@ -216,11 +216,11 @@
 
     .header-cell.header-left {
         text-align: left;
-        width: calc((100% - 3rem) * 0.55);
+        width: calc(55% - 3rem);
     }
 
     .header-cell:not(.header-left):not(.dice-column) {
-        width: calc((100% - 3rem) * 0.15);
+        width: 15%;
     }
 
     .header-cell.header-skill-psionics {
@@ -297,7 +297,7 @@
         font-weight: 500;
         color: rgba(var(--primary), 0.85);
         text-align: left;
-        width: calc((100% - 3rem) * 0.55);
+        width: calc(55% - 3rem);
         overflow: hidden;
         text-overflow: ellipsis;
     }
@@ -307,7 +307,7 @@
         font-weight: 600;
         text-align: center;
         color: rgba(var(--primary), 1);
-        width: calc((100% - 3rem) * 0.15);
+        width: 15%;
     }
 
     .skill-value.ranks {
