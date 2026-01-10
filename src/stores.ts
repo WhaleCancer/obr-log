@@ -90,36 +90,51 @@ const initialSheet = {
           },
           {
             id: 2,
-            name: "Dodge",
+            name: "Climb",
             value: "0"
           },
           {
             id: 3,
-            name: "Pilot - Air",
+            name: "Dodge",
             value: "0"
           },
           {
             id: 4,
-            name: "Pilot - Ground",
+            name: "Jump",
             value: "0"
           },
           {
             id: 5,
-            name: "Pilot - Space",
+            name: "Pilot - Air",
             value: "0"
           },
           {
             id: 6,
-            name: "Pilot - Water",
+            name: "Pilot - Ground",
             value: "0"
           },
           {
             id: 7,
-            name: "Ride",
+            name: "Pilot - Space",
             value: "0"
           },
           {
             id: 8,
+            name: "Pilot - Water",
+            value: "0"
+          },
+          {
+            id: 9,
+            name: "Ride",
+            value: "0"
+          },
+          {
+            id: 10,
+            name: "Run",
+            value: "0"
+          },
+          {
+            id: 11,
             name: "Swim",
             value: "0"
           }
