@@ -12,14 +12,14 @@
     
     // Skill descriptions for tooltips
     const skillDescriptions: Record<string, string> = {
-        "Armor": "The introduction of more and more powerful weapons has in turn driven the development of better and better armor to protect the soldiers and mercenaries of the galaxy. This armor ranges from a simple armored vest to full powered body armor weighing a ton or more. This special skill represents training in wearing and using this armor effectively.",
-        "Brawling": "It can be a nightmare when you've lost your gun or dropped your laserblade, and when that happens it's down to good 'ol fists and kicks. Use the Brawling special skill when involved in any type of hand-to-hand combat, whether unarmed or wielding a makeshift weapon.",
-        "Firearms - Heavy": "Conflict is inevitable, and sometimes it gets big, so this special skill covers the use of large weapons, such as rocket launchers, heavy machine guns, heavy lasers and anything else that inflicts a lot of damage and needs to be hefted by the user due to it's size and weight. Basically, if the weapon is bigger than you are, it's a heavy weapon.",
-        "Firearms - Light": "Covering pistols, rifles and launchers of all kinds, the Firearms - Light special skill gives the Hero a much better chance of bulls-eyeing that target. If it shoots needles, bullets, balls of yellow light or beams of explosive energy, and you can hold it in one hand or put it to your shoulder, then this skill improves your chances of hitting.",
-        "Firearms - Vehicle": "Not all weapons can be hefted, some have to be mounted to a vehicle, and this skill allows a Hero to use them. Whether it's a cannon mounted to a truck in a post-apocalyptic wasteland, a weapon under the wings of a scramjet fighter or a turret on a base, this skill gives you a much better chance.",
-        "Melee Weapons": "Fists and blasters are fine, but sometimes you just want to save your ammo or the skin of your knuckles and just bash someone over the head. The Melee special skill gives Heroes a better chance of landing a landing a blow with an iron pipe, a sword or a laserblade.",
-        "Starship Gunnery": "Firing a weapon in the vastness of space at a small craft as it traveling very very fast takes some skill and training to be successful. And this special skill is it. Launching missiles or firing a ship's laser both use this special skill.",
-        "Thrown": "If it's not too heavy, and you can get some range, you can throw it. The Thrown skill is for throwing rocks, chairs, knives, grenades, and anything that comes to hand with an increased degree of accuracy."
+        "Armor": "Training in wearing and using Starfleet combat armor, environmental suits, and personal protective equipment. This skill ensures armor provides maximum protection without hindering movement or combat effectiveness.",
+        "Brawling": "Hand-to-hand combat using fists, kicks, and grappling techniques. Essential when phasers fail or close-quarters combat prevents ranged weapons. Covers Starfleet martial arts and improvised combat.",
+        "Firearms - Heavy": "Operating heavy energy weapons like phaser rifles, disruptor cannons, and plasma launchers. These two-handed weapons require strength and training to use effectively in combat situations.",
+        "Firearms - Light": "Proficiency with hand-held energy weapons including type I and II phasers, disruptor pistols, and compact beam weapons. Essential for Starfleet security and away team operations.",
+        "Firearms - Vehicle": "Operating mounted weapons on shuttlecraft, ground vehicles, and defensive installations. Covers phaser emplacements, torpedo launchers, and automated defense systems.",
+        "Melee Weapons": "Combat proficiency with bladed and impact weapons including bat'leths, mek'leths, lirpas, and Starfleet combat knives. Useful when phasers are unavailable or during ceremonial combat.",
+        "Starship Gunnery": "Operating starship weapon systems including phaser banks and photon torpedo launchers. Requires understanding of targeting, weapon arcs, and coordination with tactical systems.",
+        "Thrown": "Accurately throwing projectiles including grenades, knives, and improvised weapons. Useful for ranged attacks when energy weapons are unavailable or for creating tactical advantages."
     };
     
     // Helper function to get description for a skill
