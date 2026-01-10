@@ -62,7 +62,7 @@
 
 <style lang="scss">
     .movement-skills-container {
-        padding: 0.05rem 0.5rem 0.05rem 0.5rem;
+        padding: 0 0.5rem 0 0.5rem;
     }
 
     .movement-skills-table {

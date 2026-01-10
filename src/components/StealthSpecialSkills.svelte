@@ -62,7 +62,7 @@
 
 <style lang="scss">
     .stealth-skills-container {
-        padding: 0.05rem 0.5rem 0.05rem 0.5rem;
+        padding: 0 0.5rem 0 0.5rem;
     }
 
     .stealth-skills-table {
