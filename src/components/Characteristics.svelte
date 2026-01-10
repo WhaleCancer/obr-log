@@ -59,8 +59,8 @@
         <thead>
             <tr>
                 <th class="header-cell">CHARACTERISTIC</th>
-                <th class="header-cell">Initial</th>
                 <th class="header-cell">Current</th>
+                <th class="header-cell">Initial</th>
             </tr>
         </thead>
         <tbody>
@@ -74,22 +74,22 @@
                 {#if editable}
                 <td class="stat-value" 
                     contenteditable="true" 
-                    on:blur={(e) => handleInitialChange(stat, e)}
-                    on:keydown={handleKeydown}>
-                    {initial}
-                </td>
-                {:else}
-                <td class="stat-value">{initial}</td>
-                {/if}
-                {#if editable}
-                <td class="stat-value" 
-                    contenteditable="true" 
                     on:blur={(e) => handleCurrentChange(stat, e)}
                     on:keydown={handleKeydown}>
                     {current}
                 </td>
                 {:else}
                 <td class="stat-value">{current}</td>
+                {/if}
+                {#if editable}
+                <td class="stat-value" 
+                    contenteditable="true" 
+                    on:blur={(e) => handleInitialChange(stat, e)}
+                    on:keydown={handleKeydown}>
+                    {initial}
+                </td>
+                {:else}
+                <td class="stat-value">{initial}</td>
                 {/if}
             </tr>
             {/each}
