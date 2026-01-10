@@ -62,7 +62,7 @@
 
 <style lang="scss">
     .knowledge-skills-container {
-        padding: 0.1rem 0.5rem 1rem 0.5rem;
+        padding: 0.05rem 0.5rem 1rem 0.5rem;
     }
 
     .knowledge-skills-table {
