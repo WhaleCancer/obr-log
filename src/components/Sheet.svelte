@@ -8,6 +8,7 @@
     import CharacterInfo from './CharacterInfo.svelte';
     import CombatSpecialSkills from './CombatSpecialSkills.svelte';
     import MovementSpecialSkills from './MovementSpecialSkills.svelte';
+    import StealthSpecialSkills from './StealthSpecialSkills.svelte';
     import RemoveSection from './RemoveSection.svelte';
     import { currentPlayerId, viewingPlayerId } from "../services/OBRHelper";
     import type { AFFSheet } from '../types/sheet.type';
@@ -32,13 +33,15 @@
     $: characterInfoSection = sheet.sections.find(s => s.name === "Character Info");
     $: combatSpecialSkillsSection = sheet.sections.find(s => s.name === "Combat Special Skills");
     $: movementSpecialSkillsSection = sheet.sections.find(s => s.name === "Movement Special Skills");
+    $: stealthSpecialSkillsSection = sheet.sections.find(s => s.name === "Stealth Special Skills");
     $: specialSkillsSections = sheet.sections.filter(s => 
         s.name !== "Characteristics" && 
         s.name !== "Character Info" && 
         s.name !== "Talents" && 
         s.name !== "Drawbacks" &&
         s.name !== "Combat Special Skills" &&
-        s.name !== "Movement Special Skills"
+        s.name !== "Movement Special Skills" &&
+        s.name !== "Stealth Special Skills"
     );
     $: otherSections = sheet.sections.filter(s => 
         s.name === "Talents" || s.name === "Drawbacks"
@@ -112,6 +115,18 @@
         </div>
     {/if}
     
+    <!-- Stealth Special Skills Section (Special handling) -->
+    {#if stealthSpecialSkillsSection}
+        <div class="stealth-skills-section-wrapper">
+            <StealthSpecialSkills bind:stats={stealthSpecialSkillsSection.stats} currentSkill={currentSkill}/>
+            {#if editable && $editing}
+                <div class="remove-section-container">
+                    <RemoveSection bind:section={stealthSpecialSkillsSection} on:removeSection={e => removeSection(e.detail)}/>
+                </div>
+            {/if}
+        </div>
+    {/if}
+    
     <!-- Special Skills Sections -->
     <Sections bind:sections={specialSkillsSections}/>
     
@@ -154,6 +169,10 @@
         width: 100%;
     }
     .movement-skills-section-wrapper {
+        margin: 0 0 0 0;
+        width: 100%;
+    }
+    .stealth-skills-section-wrapper {
         margin: 0 0 1rem 0;
         width: 100%;
     }

@@ -23,11 +23,11 @@
     }
 </script>
 
-<div class="movement-skills-container">
-    <table class="movement-skills-table">
+<div class="stealth-skills-container">
+    <table class="stealth-skills-table">
         <thead>
             <tr>
-                <th class="header-cell header-left">MOVEMENT SPECIAL SKILL</th>
+                <th class="header-cell header-left">STEALTH SPECIAL SKILL</th>
                 <th class="header-cell">Ranks</th>
                 <th class="header-cell">CURRENT SKILL</th>
                 <th class="header-cell">Total</th>
@@ -61,18 +61,18 @@
 </div>
 
 <style lang="scss">
-    .movement-skills-container {
-        padding: 0.1rem 0.5rem 0.1rem 0.5rem;
+    .stealth-skills-container {
+        padding: 0.1rem 0.5rem 1rem 0.5rem;
     }
 
-    .movement-skills-table {
+    .stealth-skills-table {
         border-collapse: collapse;
         width: 100%;
         margin: 0 auto;
         table-layout: fixed;
     }
 
-    .movement-skills-table thead {
+    .stealth-skills-table thead {
         border-bottom: 2px solid rgba(var(--accent), 0.4);
     }
 
@@ -96,36 +96,36 @@
         width: 15%;
     }
 
-    .movement-skills-table tbody tr {
+    .stealth-skills-table tbody tr {
         border-bottom: 1px solid rgba(var(--accent), 0.2);
         transition: background 0.2s ease;
     }
 
-    .movement-skills-table tbody tr.even-row:not(.has-ranks) {
+    .stealth-skills-table tbody tr.even-row:not(.has-ranks) {
         background: rgba(var(--accent), 0.05);
     }
 
-    .movement-skills-table tbody tr.odd-row:not(.has-ranks) {
+    .stealth-skills-table tbody tr.odd-row:not(.has-ranks) {
         background: rgba(var(--accent), 0.1);
     }
 
-    .movement-skills-table tbody tr.even-row.has-ranks {
+    .stealth-skills-table tbody tr.even-row.has-ranks {
         background: rgba(100, 200, 100, 0.15);
     }
 
-    .movement-skills-table tbody tr.odd-row.has-ranks {
+    .stealth-skills-table tbody tr.odd-row.has-ranks {
         background: rgba(100, 200, 100, 0.25);
     }
 
-    .movement-skills-table tbody tr:hover:not(.has-ranks) {
+    .stealth-skills-table tbody tr:hover:not(.has-ranks) {
         background: rgba(var(--accent), 0.2);
     }
 
-    .movement-skills-table tbody tr:hover.has-ranks {
+    .stealth-skills-table tbody tr:hover.has-ranks {
         background: rgba(100, 200, 100, 0.35);
     }
 
-    .movement-skills-table td {
+    .stealth-skills-table td {
         white-space: pre-wrap;
         text-shadow: var(--shadow);
         padding: 0.5rem 0.75rem;

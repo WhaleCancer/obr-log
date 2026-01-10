@@ -166,7 +166,7 @@ const initialSheet = {
           },
           {
             id: 5,
-            name: "Sneaking",
+            name: "Sneak",
             value: "0"
           },
           {
