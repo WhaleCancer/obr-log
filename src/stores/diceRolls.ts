@@ -18,34 +18,34 @@ export interface DiceRollLogEntry {
 
 const initialRolls: DiceRollLogEntry[] = [];
 
-// Create store that syncs with scene metadata and localStorage
+// Create store that syncs with room metadata and localStorage
 function createDiceRollsStore() {
     const { subscribe, set, update } = writable<DiceRollLogEntry[]>(initialRolls);
     let initialized = false;
 
-    // Initialize from scene metadata or localStorage
+    // Initialize from room metadata or localStorage
     async function initialize() {
         if (initialized) return;
         
         try {
             if (OBR.isAvailable) {
                 await OBR.onReady(async () => {
-                    // Try to get from scene metadata first (shared across players)
-                    let sceneRolls: DiceRollLogEntry[] | undefined;
+                    // Try to get from room metadata first (shared across players)
+                    let roomRolls: DiceRollLogEntry[] | undefined;
                     try {
-                        if (OBR.scene && typeof OBR.scene.getMetadata === 'function') {
-                            const sceneMetadata = await OBR.scene.getMetadata();
-                            sceneRolls = sceneMetadata['dice-rolls'] as DiceRollLogEntry[] | undefined;
+                        if (OBR.room && typeof OBR.room.getMetadata === 'function') {
+                            const roomMetadata = await OBR.room.getMetadata();
+                            roomRolls = roomMetadata['dice-rolls'] as DiceRollLogEntry[] | undefined;
                         }
                     } catch (e) {
-                        console.warn('OBR.scene.getMetadata not available, using localStorage:', e);
+                        console.warn('OBR.room.getMetadata not available, using localStorage:', e);
                     }
                     
-                    if (sceneRolls && Array.isArray(sceneRolls)) {
-                        set(sceneRolls);
+                    if (roomRolls && Array.isArray(roomRolls)) {
+                        set(roomRolls);
                         // Also sync to localStorage as backup
                         if (typeof window !== 'undefined' && window.localStorage) {
-                            localStorage.setItem('star-trek-dice-rolls', JSON.stringify(sceneRolls));
+                            localStorage.setItem('star-trek-dice-rolls', JSON.stringify(roomRolls));
                         }
                     } else {
                         // Fall back to localStorage
@@ -56,13 +56,13 @@ function createDiceRollsStore() {
                                     const parsed = JSON.parse(stored);
                                     if (Array.isArray(parsed)) {
                                         set(parsed);
-                                        // Sync to scene metadata if available
+                                        // Sync to room metadata if available
                                         try {
-                                            if (OBR.scene && typeof OBR.scene.setMetadata === 'function') {
-                                                await OBR.scene.setMetadata({ 'dice-rolls': parsed });
+                                            if (OBR.room && typeof OBR.room.setMetadata === 'function') {
+                                                await OBR.room.setMetadata({ 'dice-rolls': parsed });
                                             }
                                         } catch (e) {
-                                            console.warn('OBR.scene.setMetadata not available:', e);
+                                            console.warn('OBR.room.setMetadata not available:', e);
                                         }
                                     }
                                 } catch (e) {
@@ -72,10 +72,10 @@ function createDiceRollsStore() {
                         }
                     }
 
-                    // Subscribe to scene metadata changes to sync across players
+                    // Subscribe to room metadata changes to sync across players
                     try {
-                        if (OBR.scene && typeof OBR.scene.onMetadataChange === 'function') {
-                            OBR.scene.onMetadataChange((metadata) => {
+                        if (OBR.room && typeof OBR.room.onMetadataChange === 'function') {
+                            OBR.room.onMetadataChange((metadata) => {
                                 const rolls = metadata['dice-rolls'] as DiceRollLogEntry[] | undefined;
                                 if (rolls && Array.isArray(rolls)) {
                                     set(rolls);
@@ -87,7 +87,7 @@ function createDiceRollsStore() {
                             });
                         }
                     } catch (e) {
-                        console.warn('OBR.scene.onMetadataChange not available:', e);
+                        console.warn('OBR.room.onMetadataChange not available:', e);
                     }
 
                     initialized = true;
@@ -115,23 +115,23 @@ function createDiceRollsStore() {
         }
     }
 
-    // Sync updates to both scene metadata and localStorage
+    // Sync updates to both room metadata and localStorage
     async function syncRolls(rolls: DiceRollLogEntry[]) {
         // Update localStorage
         if (typeof window !== 'undefined' && window.localStorage) {
             localStorage.setItem('star-trek-dice-rolls', JSON.stringify(rolls));
         }
 
-        // Update scene metadata if available
+        // Update room metadata if available
         if (OBR.isAvailable) {
             try {
                 await OBR.onReady(async () => {
-                    if (OBR.scene && typeof OBR.scene.setMetadata === 'function') {
-                        await OBR.scene.setMetadata({ 'dice-rolls': rolls });
+                    if (OBR.room && typeof OBR.room.setMetadata === 'function') {
+                        await OBR.room.setMetadata({ 'dice-rolls': rolls });
                     }
                 });
             } catch (e) {
-                console.warn('Failed to sync dice rolls to scene metadata:', e);
+                console.warn('Failed to sync dice rolls to room metadata:', e);
             }
         }
     }

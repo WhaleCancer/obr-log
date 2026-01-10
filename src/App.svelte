@@ -23,10 +23,11 @@
     const hash = window.location.hash;
     isDiceLogPanel = urlParams.get('panel') === 'dice-log' || hash === '#dice-log';
     
-    if (isDiceLogPanel) {
-      // Initialize dice rolls store for log panel
-      diceRolls.initialize();
-    } else {
+    // Always initialize dice rolls store (needed for both panels)
+    diceRolls.initialize();
+    
+    // Only initialize main sheet if not showing dice log panel
+    if (!isDiceLogPanel) {
       // Clear corrupted localStorage if needed
       try {
         const stored = localStorage.getItem('star-trek-character-sheet');
