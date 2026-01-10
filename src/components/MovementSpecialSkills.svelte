@@ -165,4 +165,21 @@
         color: rgb(var(--accent));
         transition: color 0.2s ease;
     }
+
+    /* Dark green text for rows with invested ranks */
+    .movement-skills-table tbody tr.has-ranks .skill-name,
+    .movement-skills-table tbody tr.has-ranks .skill-value {
+        color: rgb(20, 80, 20);
+    }
+
+    .movement-skills-table tbody tr.has-ranks .skill-value.current-skill,
+    .movement-skills-table tbody tr.has-ranks .skill-value.total {
+        color: rgb(15, 60, 15);
+        font-weight: 700;
+    }
+
+    .movement-skills-table tbody tr.has-ranks .skill-value.ranks:hover {
+        color: rgb(25, 100, 25);
+        transition: color 0.2s ease;
+    }
 </style>
