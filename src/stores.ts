@@ -44,51 +44,36 @@ const initialSheet = {
           },
           {
             id: 2,
-            name: "Axes",
-            value: "0"
-          },
-          {
-            id: 3,
-            name: "Bows",
-            value: "0"
-          },
-          {
-            id: 4,
             name: "Brawling",
             value: "0"
           },
           {
+            id: 3,
+            name: "Firearms - Heavy",
+            value: "0"
+          },
+          {
+            id: 4,
+            name: "Firearms - Light",
+            value: "0"
+          },
+          {
             id: 5,
-            name: "Clubs",
+            name: "Firearms - Vehicle",
             value: "0"
           },
           {
             id: 6,
-            name: "Mounted Combat",
+            name: "Melee Weapons",
             value: "0"
           },
           {
             id: 7,
-            name: "Polearms",
+            name: "Starship Gunnery",
             value: "0"
           },
           {
             id: 8,
-            name: "Staves",
-            value: "0"
-          },
-          {
-            id: 9,
-            name: "Strength",
-            value: "0"
-          },
-          {
-            id: 10,
-            name: "Swords",
-            value: "0"
-          },
-          {
-            id: 11,
             name: "Thrown",
             value: "0"
           }
