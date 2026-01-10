@@ -14,6 +14,7 @@
     import PsionicSpecialSkills from './PsionicSpecialSkills.svelte';
     import Talents from './Talents.svelte';
     import RemoveSection from './RemoveSection.svelte';
+    import DiceLog from './DiceLog.svelte';
     import { currentPlayerId, viewingPlayerId } from "../services/OBRHelper";
     import type { AFFSheet } from '../types/sheet.type';
 
@@ -31,6 +32,9 @@
 
     // Exports
     export let sheet:AFFSheet;
+    
+    // Tab state
+    let activeTab: 'character' | 'dice-log' = 'character';
     
     // Split sections: Character Info first, then Special Skills, then Characteristics, then rest
     $: characteristicsSection = sheet?.sections?.find(s => s.name === "Characteristics");
@@ -107,128 +111,200 @@
 
 </script>
 
-<div>
+<div class="sheet-container">
     <h4>{player}</h4>
-    <SheetActions/>
     
-    <!-- Character Info Section -->
-    {#if characterInfoSection}
-        <CharacterInfo bind:section={characterInfoSection} bind:sheet={sheet} portrait={sheet.portrait || ""} on:portraitChange={handlePortraitChange} on:removeSection={e => removeSection(e.detail)}/>
-    {/if}
+    <!-- Tab Navigation -->
+    <div class="tabs">
+        <button 
+            class="tab-button" 
+            class:active={activeTab === 'character'}
+            on:click={() => activeTab = 'character'}
+        >
+            Character Sheet
+        </button>
+        <button 
+            class="tab-button" 
+            class:active={activeTab === 'dice-log'}
+            on:click={() => activeTab = 'dice-log'}
+        >
+            Dice Log
+        </button>
+    </div>
     
-    <!-- Characteristics Section - Right after Character Info -->
-    {#if characteristicsSection}
-        <div class="characteristics-section-wrapper">
-            <Characteristics bind:stats={characteristicsSection.stats}/>
-            {#if editable && !$editing}
-                <div class="remove-section-container">
-                    <RemoveSection bind:section={characteristicsSection} on:removeSection={e => removeSection(e.detail)}/>
+    <!-- Tab Content -->
+    <div class="tab-content">
+        {#if activeTab === 'character'}
+            <!-- Character Sheet Actions (New, Load, Save, Edit) -->
+            <SheetActions/>
+            
+            <!-- Character Info Section -->
+            {#if characterInfoSection}
+                <CharacterInfo bind:section={characterInfoSection} bind:sheet={sheet} portrait={sheet.portrait || ""} on:portraitChange={handlePortraitChange} on:removeSection={e => removeSection(e.detail)}/>
+            {/if}
+            
+            <!-- Characteristics Section - Right after Character Info -->
+            {#if characteristicsSection}
+                <div class="characteristics-section-wrapper">
+                    <Characteristics bind:stats={characteristicsSection.stats}/>
+                    {#if editable && !$editing}
+                        <div class="remove-section-container">
+                            <RemoveSection bind:section={characteristicsSection} on:removeSection={e => removeSection(e.detail)}/>
+                        </div>
+                    {/if}
                 </div>
             {/if}
-        </div>
-    {/if}
-    
-    <!-- Combat Special Skills Section (Special handling) -->
-    {#if combatSpecialSkillsSection}
-        <div class="combat-skills-section-wrapper">
-            <CombatSpecialSkills bind:stats={combatSpecialSkillsSection.stats} currentSkill={currentSkill}/>
-            {#if editable && !$editing}
-                <div class="remove-section-container">
-                    <RemoveSection bind:section={combatSpecialSkillsSection} on:removeSection={e => removeSection(e.detail)}/>
+            
+            <!-- Combat Special Skills Section (Special handling) -->
+            {#if combatSpecialSkillsSection}
+                <div class="combat-skills-section-wrapper">
+                    <CombatSpecialSkills bind:stats={combatSpecialSkillsSection.stats} currentSkill={currentSkill}/>
+                    {#if editable && !$editing}
+                        <div class="remove-section-container">
+                            <RemoveSection bind:section={combatSpecialSkillsSection} on:removeSection={e => removeSection(e.detail)}/>
+                        </div>
+                    {/if}
                 </div>
             {/if}
-        </div>
-    {/if}
-    
-    <!-- Psionic Special Skills Section (Special handling) -->
-    {#if psionicSpecialSkillsSection && ($editing || psionicsInitial > 0)}
-        <div class="psionic-skills-section-wrapper">
-            <PsionicSpecialSkills bind:stats={psionicSpecialSkillsSection.stats} currentPsionics={currentPsionics}/>
-            {#if editable && !$editing}
-                <div class="remove-section-container">
-                    <RemoveSection bind:section={psionicSpecialSkillsSection} on:removeSection={e => removeSection(e.detail)}/>
+            
+            <!-- Psionic Special Skills Section (Special handling) -->
+            {#if psionicSpecialSkillsSection && ($editing || psionicsInitial > 0)}
+                <div class="psionic-skills-section-wrapper">
+                    <PsionicSpecialSkills bind:stats={psionicSpecialSkillsSection.stats} currentPsionics={currentPsionics}/>
+                    {#if editable && !$editing}
+                        <div class="remove-section-container">
+                            <RemoveSection bind:section={psionicSpecialSkillsSection} on:removeSection={e => removeSection(e.detail)}/>
+                        </div>
+                    {/if}
                 </div>
             {/if}
-        </div>
-    {/if}
-    
-    <!-- Movement Special Skills Section (Special handling) -->
-    {#if movementSpecialSkillsSection}
-        <div class="movement-skills-section-wrapper">
-            <MovementSpecialSkills bind:stats={movementSpecialSkillsSection.stats} currentSkill={currentSkill}/>
-            {#if editable && !$editing}
-                <div class="remove-section-container">
-                    <RemoveSection bind:section={movementSpecialSkillsSection} on:removeSection={e => removeSection(e.detail)}/>
+            
+            <!-- Movement Special Skills Section (Special handling) -->
+            {#if movementSpecialSkillsSection}
+                <div class="movement-skills-section-wrapper">
+                    <MovementSpecialSkills bind:stats={movementSpecialSkillsSection.stats} currentSkill={currentSkill}/>
+                    {#if editable && !$editing}
+                        <div class="remove-section-container">
+                            <RemoveSection bind:section={movementSpecialSkillsSection} on:removeSection={e => removeSection(e.detail)}/>
+                        </div>
+                    {/if}
                 </div>
             {/if}
-        </div>
-    {/if}
-    
-    <!-- Stealth Special Skills Section (Special handling) -->
-    {#if stealthSpecialSkillsSection}
-        <div class="stealth-skills-section-wrapper">
-            <StealthSpecialSkills bind:stats={stealthSpecialSkillsSection.stats} currentSkill={currentSkill}/>
-            {#if editable && !$editing}
-                <div class="remove-section-container">
-                    <RemoveSection bind:section={stealthSpecialSkillsSection} on:removeSection={e => removeSection(e.detail)}/>
+            
+            <!-- Stealth Special Skills Section (Special handling) -->
+            {#if stealthSpecialSkillsSection}
+                <div class="stealth-skills-section-wrapper">
+                    <StealthSpecialSkills bind:stats={stealthSpecialSkillsSection.stats} currentSkill={currentSkill}/>
+                    {#if editable && !$editing}
+                        <div class="remove-section-container">
+                            <RemoveSection bind:section={stealthSpecialSkillsSection} on:removeSection={e => removeSection(e.detail)}/>
+                        </div>
+                    {/if}
                 </div>
             {/if}
-        </div>
-    {/if}
-    
-    <!-- Knowledge Special Skills Section (Special handling) -->
-    {#if knowledgeSpecialSkillsSection}
-        <div class="knowledge-skills-section-wrapper">
-            <KnowledgeSpecialSkills bind:stats={knowledgeSpecialSkillsSection.stats} currentSkill={currentKnowledgeSkill}/>
-            {#if editable && !$editing}
-                <div class="remove-section-container">
-                    <RemoveSection bind:section={knowledgeSpecialSkillsSection} on:removeSection={e => removeSection(e.detail)}/>
+            
+            <!-- Knowledge Special Skills Section (Special handling) -->
+            {#if knowledgeSpecialSkillsSection}
+                <div class="knowledge-skills-section-wrapper">
+                    <KnowledgeSpecialSkills bind:stats={knowledgeSpecialSkillsSection.stats} currentSkill={currentKnowledgeSkill}/>
+                    {#if editable && !$editing}
+                        <div class="remove-section-container">
+                            <RemoveSection bind:section={knowledgeSpecialSkillsSection} on:removeSection={e => removeSection(e.detail)}/>
+                        </div>
+                    {/if}
                 </div>
             {/if}
-        </div>
-    {/if}
-    
-    <!-- Science Special Skills Section (Special handling) -->
-    {#if scienceSpecialSkillsSection}
-        <div class="science-skills-section-wrapper">
-            <ScienceSpecialSkills bind:stats={scienceSpecialSkillsSection.stats} currentSkill={currentScienceSkill}/>
-            {#if editable && !$editing}
-                <div class="remove-section-container">
-                    <RemoveSection bind:section={scienceSpecialSkillsSection} on:removeSection={e => removeSection(e.detail)}/>
+            
+            <!-- Science Special Skills Section (Special handling) -->
+            {#if scienceSpecialSkillsSection}
+                <div class="science-skills-section-wrapper">
+                    <ScienceSpecialSkills bind:stats={scienceSpecialSkillsSection.stats} currentSkill={currentScienceSkill}/>
+                    {#if editable && !$editing}
+                        <div class="remove-section-container">
+                            <RemoveSection bind:section={scienceSpecialSkillsSection} on:removeSection={e => removeSection(e.detail)}/>
+                        </div>
+                    {/if}
                 </div>
             {/if}
-        </div>
-    {/if}
-    
-    <!-- Special Skills Sections -->
-    <Sections bind:sections={specialSkillsSections}/>
-    
-    <!-- Talents Section -->
-    {#if talentsSection}
-        <div class="talents-section-wrapper">
-            <Talents bind:section={talentsSection}/>
-            {#if editable && !$editing}
-                <div class="remove-section-container">
-                    <RemoveSection bind:section={talentsSection} on:removeSection={e => removeSection(e.detail)}/>
+            
+            <!-- Special Skills Sections -->
+            <Sections bind:sections={specialSkillsSections}/>
+            
+            <!-- Talents Section -->
+            {#if talentsSection}
+                <div class="talents-section-wrapper">
+                    <Talents bind:section={talentsSection}/>
+                    {#if editable && !$editing}
+                        <div class="remove-section-container">
+                            <RemoveSection bind:section={talentsSection} on:removeSection={e => removeSection(e.detail)}/>
+                        </div>
+                    {/if}
                 </div>
             {/if}
-        </div>
-    {/if}
-    
-    <!-- Other Sections (Drawbacks) -->
-    <Sections bind:sections={otherSections}/>
-    
-    <Notes bind:notes={sheet.notes}/>
+            
+            <!-- Other Sections (Drawbacks) -->
+            <Sections bind:sections={otherSections}/>
+            
+            <Notes bind:notes={sheet.notes}/>
+        {:else if activeTab === 'dice-log'}
+            <DiceLog/>
+        {/if}
+    </div>
 </div>
 
 <style lang="scss">
-    div {
+    .sheet-container {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+    }
+
+    .sheet-container > div:not(.tabs):not(.tab-content) {
         width: 90%;
         margin-left: auto;
         margin-right: auto;
         padding-top: 2rem;
         padding-bottom: 2rem;
     }
+
+    /* SheetActions should appear right after tabs */
+    .tab-content > :global(.sheet-actions) {
+        width: 90%;
+        margin-left: auto;
+        margin-right: auto;
+        padding: 1rem 0;
+        margin-top: 0;
+        margin-bottom: 0.5rem;
+        flex-shrink: 0;
+    }
+
+    /* Character sheet content in tab should have padding */
+    .tab-content > :global(.character-info-container),
+    .tab-content > :global(.characteristics-section-wrapper),
+    .tab-content > :global(.combat-skills-section-wrapper),
+    .tab-content > :global(.psionic-skills-section-wrapper),
+    .tab-content > :global(.movement-skills-section-wrapper),
+    .tab-content > :global(.stealth-skills-section-wrapper),
+    .tab-content > :global(.knowledge-skills-section-wrapper),
+    .tab-content > :global(.science-skills-section-wrapper),
+    .tab-content > :global(.talents-section-wrapper),
+    .tab-content > :global(.section-wrapper),
+    .tab-content > :global(.notes-container) {
+        width: 90%;
+        margin-left: auto;
+        margin-right: auto;
+        padding-top: 2rem;
+        padding-bottom: 2rem;
+    }
+
+    /* Dice log in tab should fill full height without padding */
+    .tab-content > :global(.dice-log-container) {
+        width: 100%;
+        margin: 0;
+        padding: 0;
+        height: 100%;
+    }
+
     h1 {
         margin: 1rem 0 0 1rem;
         color:rgb(var(--accent));
@@ -239,6 +315,59 @@
         margin:0;
         color:rgb(var(--accent));
         text-align: right;
+    }
+
+    .tabs {
+        display: flex;
+        gap: 0.5rem;
+        padding: 0.5rem 1rem;
+        border-bottom: 2px solid rgba(var(--accent), 0.3);
+        background: rgba(var(--accent), 0.05);
+        margin-bottom: 1rem;
+        flex-shrink: 0;
+    }
+
+    .tab-button {
+        padding: 0.5rem 1rem;
+        border: none;
+        border-bottom: 2px solid transparent;
+        background: transparent;
+        color: rgba(var(--primary), 0.7);
+        font-size: 0.95rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        text-transform: uppercase;
+
+        &:hover {
+            color: rgb(var(--accent));
+            background: rgba(var(--accent), 0.1);
+        }
+
+        &.active {
+            color: rgb(var(--accent));
+            border-bottom-color: rgb(var(--accent));
+            background: rgba(var(--accent), 0.1);
+            font-weight: 600;
+        }
+    }
+
+    .tab-content {
+        flex: 1;
+        overflow: hidden;
+        min-height: 0;
+        display: flex;
+        flex-direction: column;
+        position: relative;
+        
+        /* Dice log should fill full height and width without padding */
+        > :global(.dice-log-container) {
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+        }
     }
     .characteristics-section-wrapper,
     .combat-skills-section-wrapper,
@@ -279,12 +408,46 @@
         width: 100%;
     }
     @media only screen and (min-width: 33.75em) {
-        div {
+        .sheet-container > div:not(.tabs):not(.tab-content) {
+            width: 85%;
+        }
+        .tab-content > :global(.sheet-actions) {
+            width: 85%;
+        }
+        .tab-content > :global(.character-info-container),
+        .tab-content > :global(.characteristics-section-wrapper),
+        .tab-content > :global(.combat-skills-section-wrapper),
+        .tab-content > :global(.psionic-skills-section-wrapper),
+        .tab-content > :global(.movement-skills-section-wrapper),
+        .tab-content > :global(.stealth-skills-section-wrapper),
+        .tab-content > :global(.knowledge-skills-section-wrapper),
+        .tab-content > :global(.science-skills-section-wrapper),
+        .tab-content > :global(.talents-section-wrapper),
+        .tab-content > :global(.section-wrapper),
+        .tab-content > :global(.notes-container) {
             width: 85%;
         }
     }
     @media only screen and (min-width: 60em) { /* 960px */
-        div {
+        .sheet-container > div:not(.tabs):not(.tab-content) {
+            width: 75%;
+            max-width: 60rem;
+        }
+        .tab-content > :global(.sheet-actions) {
+            width: 75%;
+            max-width: 60rem;
+        }
+        .tab-content > :global(.character-info-container),
+        .tab-content > :global(.characteristics-section-wrapper),
+        .tab-content > :global(.combat-skills-section-wrapper),
+        .tab-content > :global(.psionic-skills-section-wrapper),
+        .tab-content > :global(.movement-skills-section-wrapper),
+        .tab-content > :global(.stealth-skills-section-wrapper),
+        .tab-content > :global(.knowledge-skills-section-wrapper),
+        .tab-content > :global(.science-skills-section-wrapper),
+        .tab-content > :global(.talents-section-wrapper),
+        .tab-content > :global(.section-wrapper),
+        .tab-content > :global(.notes-container) {
             width: 75%;
             max-width: 60rem;
         }

@@ -16,7 +16,7 @@
 </script>
 
 {#if $currentPlayerId === $viewingPlayerId}
-<div>
+<div class="sheet-actions">
     <button class="action-button new-character-button" on:click={handleNewCharacter} title="Reset character to default values">
         📄 New
     </button>
@@ -27,7 +27,7 @@
 {/if}
 
 <style lang="scss">
-    div {
+    .sheet-actions {
         margin-top: 1rem;
         margin-bottom: 1rem;
         display: flex;
