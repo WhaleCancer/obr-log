@@ -61,6 +61,18 @@
         return isNaN(num) ? 0 : num;
     })();
     
+    // Reactive statement to update currentPsionics whenever the PSIONICS stat value changes
+    $: psionicsValue = characteristicsSection?.stats?.find(s => s.name === "PSIONICS")?.value || "0/0";
+    $: currentPsionics = (() => {
+        const parts = psionicsValue.split('/');
+        const current = parts[1]?.trim() || parts[0]?.trim() || '0';
+        const num = parseInt(current, 10);
+        return isNaN(num) ? 0 : num;
+    })();
+    
+    // For Knowledge Skills, use whichever is higher: SKILL or PSIONICS
+    $: currentKnowledgeSkill = Math.max(currentSkill, currentPsionics);
+    
     function toggleEditing(){ 
       $editing = !$editing;
     }
@@ -112,7 +124,7 @@
     <!-- Psionic Special Skills Section (Special handling) -->
     {#if psionicSpecialSkillsSection}
         <div class="psionic-skills-section-wrapper">
-            <PsionicSpecialSkills bind:stats={psionicSpecialSkillsSection.stats} currentSkill={currentSkill}/>
+            <PsionicSpecialSkills bind:stats={psionicSpecialSkillsSection.stats} currentPsionics={currentPsionics}/>
             {#if editable && $editing}
                 <div class="remove-section-container">
                     <RemoveSection bind:section={psionicSpecialSkillsSection} on:removeSection={e => removeSection(e.detail)}/>
@@ -148,7 +160,7 @@
     <!-- Knowledge Special Skills Section (Special handling) -->
     {#if knowledgeSpecialSkillsSection}
         <div class="knowledge-skills-section-wrapper">
-            <KnowledgeSpecialSkills bind:stats={knowledgeSpecialSkillsSection.stats} currentSkill={currentSkill}/>
+            <KnowledgeSpecialSkills bind:stats={knowledgeSpecialSkillsSection.stats} currentSkill={currentKnowledgeSkill}/>
             {#if editable && $editing}
                 <div class="remove-section-container">
                     <RemoveSection bind:section={knowledgeSpecialSkillsSection} on:removeSection={e => removeSection(e.detail)}/>

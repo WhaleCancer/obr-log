@@ -6,7 +6,7 @@
 
     // Export
     export let stats;
-    export let currentSkill: number = 0; // Current SKILL value from Characteristics
+    export let currentPsionics: number = 0; // Current PSIONICS value from Characteristics
 
     $: editable = $currentPlayerId === $viewingPlayerId;
     
@@ -16,10 +16,10 @@
         return isNaN(num) ? 0 : num;
     }
     
-    // Helper function to calculate total (ranks + current skill)
+    // Helper function to calculate total (ranks + current psionics)
     function calculateTotal(ranksValue: string): number {
         const ranks = parseNumber(ranksValue);
-        return ranks + currentSkill;
+        return ranks + currentPsionics;
     }
 </script>
 
@@ -29,7 +29,7 @@
             <tr>
                 <th class="header-cell header-left">PSIONIC SPECIAL SKILL</th>
                 <th class="header-cell">Ranks</th>
-                <th class="header-cell">CURRENT SKILL</th>
+                <th class="header-cell">CURRENT PSIONICS</th>
                 <th class="header-cell">Total</th>
             </tr>
         </thead>
@@ -52,7 +52,7 @@
                 {:else}
                 <td class="skill-value ranks">{stat.value}</td>
                 {/if}
-                <td class="skill-value current-skill">{currentSkill}</td>
+                <td class="skill-value current-psionics">{currentPsionics}</td>
                 <td class="skill-value total">{calculateTotal(stat.value)}</td>
             </tr>
             {/each}
@@ -155,7 +155,7 @@
         color: rgba(var(--primary), 1);
     }
 
-    .skill-value.current-skill,
+    .skill-value.current-psionics,
     .skill-value.total {
         color: rgba(var(--accent), 0.9);
         font-weight: 700;
