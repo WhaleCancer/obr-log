@@ -34,8 +34,10 @@
             </tr>
         </thead>
         <tbody>
-            {#each stats as stat (stat.id)}
-            <tr>
+            {#each stats as stat, index (stat.id)}
+            {@const hasRanks = parseNumber(stat.value) > 0}
+            {@const isEven = index % 2 === 0}
+            <tr class:has-ranks={hasRanks} class:even-row={isEven} class:odd-row={!isEven}>
                 {#if editable && $editing}
                 <td class="skill-name" contenteditable="true" bind:innerText={stat.name}>{stat.name}</td>
                 {:else}
@@ -44,7 +46,8 @@
                 {#if editable}
                 <td class="skill-value ranks" 
                     contenteditable="true" 
-                    bind:innerText={stat.value}>
+                    bind:innerText={stat.value}
+                    on:blur={() => stats = [...stats]}>
                 </td>
                 {:else}
                 <td class="skill-value ranks">{stat.value}</td>
@@ -98,16 +101,28 @@
         transition: background 0.2s ease;
     }
 
-    .movement-skills-table tbody tr:nth-child(even) {
+    .movement-skills-table tbody tr.even-row:not(.has-ranks) {
         background: rgba(var(--accent), 0.05);
     }
 
-    .movement-skills-table tbody tr:nth-child(odd) {
+    .movement-skills-table tbody tr.odd-row:not(.has-ranks) {
         background: rgba(var(--accent), 0.1);
     }
 
-    .movement-skills-table tbody tr:hover {
+    .movement-skills-table tbody tr.even-row.has-ranks {
+        background: rgba(100, 200, 100, 0.15);
+    }
+
+    .movement-skills-table tbody tr.odd-row.has-ranks {
+        background: rgba(100, 200, 100, 0.25);
+    }
+
+    .movement-skills-table tbody tr:hover:not(.has-ranks) {
         background: rgba(var(--accent), 0.2);
+    }
+
+    .movement-skills-table tbody tr:hover.has-ranks {
+        background: rgba(100, 200, 100, 0.35);
     }
 
     .movement-skills-table td {
