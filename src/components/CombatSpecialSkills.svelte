@@ -94,13 +94,20 @@
     }
 
     .combat-skills-table tbody tr {
-        background: rgba(var(--accent), 0.05);
         border-bottom: 1px solid rgba(var(--accent), 0.2);
         transition: background 0.2s ease;
     }
 
-    .combat-skills-table tbody tr:hover {
+    .combat-skills-table tbody tr:nth-child(even) {
+        background: rgba(var(--accent), 0.05);
+    }
+
+    .combat-skills-table tbody tr:nth-child(odd) {
         background: rgba(var(--accent), 0.1);
+    }
+
+    .combat-skills-table tbody tr:hover {
+        background: rgba(var(--accent), 0.2);
     }
 
     .combat-skills-table td {

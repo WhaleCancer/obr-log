@@ -94,13 +94,20 @@
     }
 
     .movement-skills-table tbody tr {
-        background: rgba(var(--accent), 0.05);
         border-bottom: 1px solid rgba(var(--accent), 0.2);
         transition: background 0.2s ease;
     }
 
-    .movement-skills-table tbody tr:hover {
+    .movement-skills-table tbody tr:nth-child(even) {
+        background: rgba(var(--accent), 0.05);
+    }
+
+    .movement-skills-table tbody tr:nth-child(odd) {
         background: rgba(var(--accent), 0.1);
+    }
+
+    .movement-skills-table tbody tr:hover {
+        background: rgba(var(--accent), 0.2);
     }
 
     .movement-skills-table td {
