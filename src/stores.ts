@@ -330,6 +330,68 @@ const initialTheme = {
     textShadow:     "1px 1px 2px #000000"
 };
 
+// Migration function to update Combat Special Skills to Star Trek skills
+function migrateCombatSpecialSkills(sheet: any) {
+    const combatSection = sheet.sections?.find((s: any) => s.name === "Combat Special Skills");
+    if (!combatSection) return sheet;
+
+    // Check if it needs migration (has old fantasy skills)
+    const oldSkills = ["Axes", "Bows", "Clubs", "Mounted Combat", "Polearms", "Staves", "Strength", "Swords"];
+    const hasOldSkills = combatSection.stats?.some((stat: any) => oldSkills.includes(stat.name));
+    
+    if (hasOldSkills) {
+        // Define new Star Trek skills
+        const newSkills = [
+            { id: 1, name: "Armor", value: "0" },
+            { id: 2, name: "Brawling", value: "0" },
+            { id: 3, name: "Firearms - Heavy", value: "0" },
+            { id: 4, name: "Firearms - Light", value: "0" },
+            { id: 5, name: "Firearms - Vehicle", value: "0" },
+            { id: 6, name: "Melee Weapons", value: "0" },
+            { id: 7, name: "Starship Gunnery", value: "0" },
+            { id: 8, name: "Thrown", value: "0" }
+        ];
+
+        // Try to preserve existing values for skills that match
+        const existingValues: Record<string, string> = {};
+        combatSection.stats?.forEach((stat: any) => {
+            // Map old skills to new ones where possible
+            if (stat.name === "Armor") existingValues["Armor"] = stat.value;
+            if (stat.name === "Brawling") existingValues["Brawling"] = stat.value;
+            if (stat.name === "Thrown") existingValues["Thrown"] = stat.value;
+        });
+
+        // Update with new skills, preserving values where possible
+        combatSection.stats = newSkills.map(skill => ({
+            ...skill,
+            value: existingValues[skill.name] || "0"
+        }));
+
+        // Update the sections array immutably
+        sheet.sections = sheet.sections.map((s: any) => 
+            s.name === "Combat Special Skills" ? combatSection : s
+        );
+    }
+
+    return sheet;
+}
+
+// Apply migration before creating store - run migration on existing localStorage data
+const STORAGE_KEY = 'star-trek-character-sheet';
+const stored = localStorage.getItem(STORAGE_KEY);
+if (stored) {
+    try {
+        const parsed = JSON.parse(stored);
+        const migrated = migrateCombatSpecialSkills(parsed);
+        // If migration changed the data, save it back immediately
+        if (JSON.stringify(migrated) !== JSON.stringify(parsed)) {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(migrated));
+        }
+    } catch {
+        // If parsing fails, use initial
+    }
+}
+
 export const editing = writable(false);
-export const sheet = localStore('star-trek-character-sheet', initialSheet);
+export const sheet = localStore(STORAGE_KEY, initialSheet);
 export const theme = localStore('star-trek-character-sheet-theme', initialTheme);
