@@ -150,11 +150,11 @@
         text-align: center;
     }
     .combat-skills-section-wrapper {
-        margin: 1rem 0;
+        margin: 1rem 0 0 0;
         width: 100%;
     }
     .movement-skills-section-wrapper {
-        margin: 1rem 0;
+        margin: 0 0 1rem 0;
         width: 100%;
     }
     @media only screen and (min-width: 33.75em) {
