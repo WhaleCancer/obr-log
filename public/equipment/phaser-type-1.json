@@ -1,0 +1,31 @@
+{
+  "name": "Phaser Type-1",
+  "icon": "/equipment/images/Federation_Type_1_Phaser_icon.png",
+  "type": "Energy Weapon (Phaser)",
+  "manufacturer": "Starfleet Command",
+  "price": "800 Cr",
+  "slot": "Right Hand",
+  "hands": 1,
+  "allowedSlots": ["Right Hand", "Left Hand"],
+  "specialSkill": "Firearms - Light",
+  "range": "9 squares (Very Short)",
+  "special": "Stun/Kill settings (see description)",
+  "damageTrack": {
+    "1": 3,
+    "2": 3,
+    "3": 4,
+    "4": 4,
+    "5": 5,
+    "6": 5,
+    "7+": 6
+  },
+  "description": "The Type-1 phaser, also known as the hand phaser or phaser pistol, is the smallest and most compact phaser design issued by Starfleet. This concealable weapon is designed for personal defense and close-quarters combat situations where discretion is important.\n\nThe Type-1 phaser features two firing modes:\n- **Stun Setting:** Inflicts the same damage as the kill setting but will only reduce a target's STAMINA to 0 without causing death. Some creatures may have resistance or immunity to stun effects. The weapon automatically switches to stun after delivering a fatal blow if the target would have been killed, ensuring non-lethal takedowns when using this mode.\n- **Kill Setting:** Inflicts full damage and can kill targets when their STAMINA reaches 0.\n\nDespite its compact size, the Type-1 phaser is a reliable and effective weapon, though its very short range of 9 squares makes it suitable primarily for close encounters and boarding actions. At maximum range, an enemy closing at double-move speed (8 squares per round) will reach melee range (1 square) in one round, allowing the phaser wielder exactly one shot before the enemy closes. This makes it ideal for point-blank encounters where every shot counts.",
+  "stats": {
+    "Damage Track": "3/3/4/4/5/5/6",
+    "Range": "9 squares (Very Short)",
+    "Special": "Stun/Kill settings",
+    "Manufacturer": "Starfleet Command",
+    "Type": "Energy Weapon (Phaser)",
+    "Price": "800 Cr"
+  }
+}

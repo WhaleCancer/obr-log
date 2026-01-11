@@ -6,8 +6,13 @@
 
     // Import components
     import RemoveStat from "./RemoveStat.svelte";
-    import AddStat from "./AddStat.svelte";
     import RemoveSection from './RemoveSection.svelte';
+    import { gradeOptions } from '../data/grades';
+    import { gradePoints } from '../data/gradePoints';
+    import { baseCharacteristics } from '../data/gradeMaxValues';
+    import { characteristicCosts } from '../data/characteristicCosts';
+    import { specialSkillPoints } from '../data/specialSkillPoints';
+    import { getCumulativeSpecialSkillCost } from '../data/specialSkillCosts';
 
     import { createEventDispatcher, onMount } from 'svelte';
 
@@ -23,7 +28,6 @@
     const defaultPortrait = `${baseUrl}no-token.png`;
 
     $: editable = $currentPlayerId === $viewingPlayerId;
-    $: newStatId = section.stats.length > 0 ? Math.max(...section.stats.map(t => t.id)) + 1 : 1;
     
     // Division options
     const divisionOptions = [
@@ -57,6 +61,16 @@
     
     // Find the Name stat and sync with sheet.name
     $: nameStat = section.stats.find(s => s.name === "Name");
+    
+    // Find the Grade stat
+    $: gradeStat = section.stats.find(s => s.name === "Grade");
+    $: currentGrade = gradeStat ? (gradeStat.value || "Veteran") : "Veteran";
+    
+    // Ensure Grade has a default value if empty
+    $: if (gradeStat && !gradeStat.value) {
+        gradeStat.value = "Veteran";
+        section.stats = [...section.stats];
+    }
     
     // Find the Species stat
     $: speciesStat = section.stats.find(s => s.name === "Species");
@@ -131,6 +145,15 @@
         }
     }
     
+    // Handle when Grade dropdown changes
+    function handleGradeChange(event: Event) {
+        const target = event.target as HTMLSelectElement;
+        if (gradeStat) {
+            gradeStat.value = target.value;
+            section.stats = [...section.stats]; // Trigger reactivity
+        }
+    }
+    
     // Handle when Species dropdown changes
     function handleSpeciesChange(event: Event) {
         const target = event.target as HTMLSelectElement;
@@ -186,14 +209,6 @@
         sheet.name = nameStat.value || "";
     }
 
-    function addStat() {
-        section.stats = [...section.stats, {
-            id: newStatId,
-            name: "New Field",
-            value: "-"
-        }];
-    }
-
     function removeStat(stat) {
         section.stats = section.stats.filter(t => t.id !== stat.id);
     }
@@ -231,6 +246,184 @@
     function removePortrait() {
         dispatch('portraitChange', "");
     }
+
+    // Handle Experience value changes to ensure it's always an integer
+    function handleExperienceChange(event: Event) {
+        const element = event.target as HTMLElement;
+        const rawValue = element.innerText.trim();
+        // Parse the value and round to nearest integer
+        const numValue = Math.round(parseFloat(rawValue) || 0);
+        const intValue = Math.max(0, numValue).toString(); // Ensure non-negative
+        
+        // Update the stat value
+        const expStat = section.stats.find(s => s.name === "Experience");
+        if (expStat) {
+            expStat.value = intValue;
+            section.stats = [...section.stats]; // Trigger reactivity
+        }
+        
+        // Update the display
+        element.innerText = intValue;
+    }
+
+    // Format Experience value for display (ensure integer)
+    function formatExperienceValue(value: string): string {
+        const numValue = Math.round(parseFloat(value) || 0);
+        return Math.max(0, numValue).toString();
+    }
+    
+    // Helper function to parse initial/current from value
+    function parseValue(value: string) {
+        const parts = value.split('/');
+        return {
+            initial: parts[0]?.trim() || '0',
+            current: parts[1]?.trim() || parts[0]?.trim() || '0'
+        };
+    }
+    
+    // Get characteristics section from sheet - reactive to sheet changes
+    $: characteristicsSection = sheet?.sections?.find(s => s.name === "Characteristics");
+    
+    // Get available characteristic points based on grade
+    $: availablePoints = gradePoints[currentGrade] || gradePoints["Veteran"];
+    
+    // Extract stat values to create explicit dependencies for reactivity
+    // This ensures Svelte tracks changes to individual stat values
+    $: skillStat = characteristicsSection?.stats?.find(s => s.name === "SKILL");
+    $: staminaStat = characteristicsSection?.stats?.find(s => s.name === "STAMINA");
+    $: luckStat = characteristicsSection?.stats?.find(s => s.name === "LUCK");
+    $: psionicsStat = characteristicsSection?.stats?.find(s => s.name === "PSIONICS");
+    
+    $: skillValue = skillStat?.value || '4/4';
+    $: staminaValue = staminaStat?.value || '8/8';
+    $: luckValue = luckStat?.value || '9/9';
+    $: psionicsValue = psionicsStat?.value || '0/0';
+    
+    // Create a reactive signature from all stat values to trigger recalculation
+    $: statsSignature = `${skillValue}|${staminaValue}|${luckValue}|${psionicsValue}`;
+    
+    // Calculate characteristic points spent - reactive to stat values
+    $: pointsSpent = statsSignature ? (() => {
+        // statsSignature dependency ensures recalculation when any stat value changes
+        if (!characteristicsSection || !characteristicsSection.stats || characteristicsSection.stats.length === 0) return 0;
+        
+        let points = 0;
+        for (const stat of characteristicsSection.stats) {
+            if (stat.name === "PSI POINTS") continue; // PSI POINTS is calculated, not spent
+            
+            const parsed = parseValue(stat.value || '0/0');
+            const initial = parseInt(parsed.initial || '0', 10);
+            const base = baseCharacteristics[stat.name as keyof typeof baseCharacteristics] || 0;
+            const valueIncrease = Math.max(0, initial - base);
+            
+            // Each point of STAMINA costs 1 characteristic point
+            // Other characteristics (SKILL, LUCK, PSIONICS) cost 2 points per point
+            const cost = characteristicCosts[stat.name] || 2;
+            points += valueIncrease * cost;
+        }
+        return points;
+    })() : 0;
+    
+    $: pointsRemaining = availablePoints - pointsSpent;
+    // Display format: remaining / total (starts full, decreases as spent)
+    $: characteristicPointsDisplay = `${pointsRemaining} / ${availablePoints}`;
+    
+    // Get all special skills sections from sheet
+    $: combatSpecialSkillsSection = sheet?.sections?.find(s => s.name === "Combat Special Skills");
+    $: psionicSpecialSkillsSection = sheet?.sections?.find(s => s.name === "Psionic Special Skills");
+    $: movementSpecialSkillsSection = sheet?.sections?.find(s => s.name === "Movement Special Skills");
+    $: stealthSpecialSkillsSection = sheet?.sections?.find(s => s.name === "Stealth Special Skills");
+    $: knowledgeSpecialSkillsSection = sheet?.sections?.find(s => s.name === "Knowledge Special Skills");
+    $: scienceSpecialSkillsSection = sheet?.sections?.find(s => s.name === "Science Special Skills");
+    
+    // Helper function to parse number from string value
+    function parseNumber(value: string): number {
+        const num = parseInt(value.trim() || '0', 10);
+        return isNaN(num) ? 0 : num;
+    }
+    
+    // Create reactive signatures from all special skill stat values to ensure reactivity
+    $: combatSkillsSignature = combatSpecialSkillsSection?.stats?.map(s => `${s.id}:${s.value}`).join('|') || '';
+    $: psionicSkillsSignature = psionicSpecialSkillsSection?.stats?.map(s => `${s.id}:${s.value}`).join('|') || '';
+    $: movementSkillsSignature = movementSpecialSkillsSection?.stats?.map(s => `${s.id}:${s.value}`).join('|') || '';
+    $: stealthSkillsSignature = stealthSpecialSkillsSection?.stats?.map(s => `${s.id}:${s.value}`).join('|') || '';
+    $: knowledgeSkillsSignature = knowledgeSpecialSkillsSection?.stats?.map(s => `${s.id}:${s.value}`).join('|') || '';
+    $: scienceSkillsSignature = scienceSpecialSkillsSection?.stats?.map(s => `${s.id}:${s.value}`).join('|') || '';
+    $: allSpecialSkillsSignature = `${combatSkillsSignature}|${psionicSkillsSignature}|${movementSkillsSignature}|${stealthSkillsSignature}|${knowledgeSkillsSignature}|${scienceSkillsSignature}`;
+    
+    // Calculate total special skill points spent across all special skills sections
+    // Reactive to all special skills stat value changes
+    $: specialSkillPointsSpent = allSpecialSkillsSignature ? (() => {
+        let totalPoints = 0;
+        
+        // Combat Special Skills
+        if (combatSpecialSkillsSection?.stats) {
+            for (const stat of combatSpecialSkillsSection.stats) {
+                const rank = parseNumber(stat.value || '0');
+                if (rank > 0) {
+                    totalPoints += getCumulativeSpecialSkillCost('combat', rank);
+                }
+            }
+        }
+        
+        // Psionic Special Skills
+        if (psionicSpecialSkillsSection?.stats) {
+            for (const stat of psionicSpecialSkillsSection.stats) {
+                const rank = parseNumber(stat.value || '0');
+                if (rank > 0) {
+                    totalPoints += getCumulativeSpecialSkillCost('psionic', rank);
+                }
+            }
+        }
+        
+        // Movement Special Skills
+        if (movementSpecialSkillsSection?.stats) {
+            for (const stat of movementSpecialSkillsSection.stats) {
+                const rank = parseNumber(stat.value || '0');
+                if (rank > 0) {
+                    totalPoints += getCumulativeSpecialSkillCost('movement', rank);
+                }
+            }
+        }
+        
+        // Stealth Special Skills
+        if (stealthSpecialSkillsSection?.stats) {
+            for (const stat of stealthSpecialSkillsSection.stats) {
+                const rank = parseNumber(stat.value || '0');
+                if (rank > 0) {
+                    totalPoints += getCumulativeSpecialSkillCost('stealth', rank);
+                }
+            }
+        }
+        
+        // Knowledge Special Skills
+        if (knowledgeSpecialSkillsSection?.stats) {
+            for (const stat of knowledgeSpecialSkillsSection.stats) {
+                const rank = parseNumber(stat.value || '0');
+                if (rank > 0) {
+                    totalPoints += getCumulativeSpecialSkillCost('knowledge', rank);
+                }
+            }
+        }
+        
+        // Science Special Skills
+        if (scienceSpecialSkillsSection?.stats) {
+            for (const stat of scienceSpecialSkillsSection.stats) {
+                const rank = parseNumber(stat.value || '0');
+                if (rank > 0) {
+                    totalPoints += getCumulativeSpecialSkillCost('science', rank);
+                }
+            }
+        }
+        
+        return totalPoints;
+    })() : 0;
+    
+    // Get available special skill points based on grade
+    $: availableSpecialSkillPoints = specialSkillPoints[currentGrade] || specialSkillPoints["Veteran"];
+    $: specialSkillPointsRemaining = availableSpecialSkillPoints - specialSkillPointsSpent;
+    // Display format: remaining / total (starts full, decreases as spent)
+    $: specialSkillPointsDisplay = `${specialSkillPointsRemaining} / ${availableSpecialSkillPoints}`;
 </script>
 
 <div class="character-info-container">
@@ -251,6 +444,17 @@
                                 bind:innerText={nameStat.value}
                                 on:blur={handleNameStatChange} 
                                 on:keydown={(e) => e.key === 'Enter' && e.preventDefault()}>
+                            </td>
+                        {:else if stat.name === "Grade"}
+                            <td>
+                                <select 
+                                    value={stat.value || "Veteran"} 
+                                    on:change={handleGradeChange}
+                                    class="division-select">
+                                    {#each gradeOptions as gradeOption}
+                                        <option value={gradeOption}>{gradeOption}</option>
+                                    {/each}
+                                </select>
                             </td>
                         {:else if stat.name === "Species"}
                             <td>
@@ -285,6 +489,20 @@
                                     {/each}
                                 </select>
                             </td>
+                        {:else if stat.name === "Experience"}
+                            <td 
+                                contenteditable="true" 
+                                data-initial-value={formatExperienceValue(stat.value)}
+                                on:blur={handleExperienceChange}
+                                on:keydown={(e) => e.key === 'Enter' && e.preventDefault()}>
+                                {formatExperienceValue(stat.value)}
+                            </td>
+                        {:else if stat.name === "Assignment"}
+                            <td 
+                                contenteditable="true" 
+                                bind:innerText={stat.value}
+                                class="assignment-field">
+                            </td>
                         {:else}
                             <td contenteditable="true" bind:innerText={stat.value}></td>
                         {/if}
@@ -296,24 +514,34 @@
                                 on:blur={handleNameStatChange} 
                                 on:keydown={(e) => e.key === 'Enter' && e.preventDefault()}>
                             </td>
-                        {:else if stat.name === "Species" || stat.name === "Division" || stat.name === "Rank" || stat.name === "Assignment"}
+                        {:else if stat.name === "Grade" || stat.name === "Species" || stat.name === "Division" || stat.name === "Rank" || stat.name === "Assignment"}
                             <td 
                                 class:tooltip-trigger={stat.name === "Division" || stat.name === "Rank"}
+                                class:assignment-field={stat.name === "Assignment"}
                                 on:mouseenter={stat.name === "Division" || stat.name === "Rank" ? (e) => handleFieldMouseEnter(e, stat.name) : undefined}
                                 on:mouseleave={stat.name === "Division" || stat.name === "Rank" ? handleFieldMouseLeave : undefined}
                                 on:mousemove={stat.name === "Division" || stat.name === "Rank" ? handleFieldMouseMove : undefined}>
                                 {stat.value}
                             </td>
+                        {:else if stat.name === "Experience"}
+                            <td 
+                                contenteditable="true" 
+                                data-initial-value={formatExperienceValue(stat.value)}
+                                on:blur={handleExperienceChange}
+                                on:keydown={(e) => e.key === 'Enter' && e.preventDefault()}>
+                                {formatExperienceValue(stat.value)}
+                            </td>
                         {:else}
                             <td contenteditable="true" bind:innerText={stat.value}></td>
                         {/if}
-                    {:else}
-                        <td 
-                            class:tooltip-trigger={stat.name === "Division" || stat.name === "Rank"}
-                            on:mouseenter={stat.name === "Division" || stat.name === "Rank" ? (e) => handleFieldMouseEnter(e, stat.name) : undefined}
-                            on:mouseleave={stat.name === "Division" || stat.name === "Rank" ? handleFieldMouseLeave : undefined}
-                            on:mousemove={stat.name === "Division" || stat.name === "Rank" ? handleFieldMouseMove : undefined}>
-                            {stat.name === "Name" ? nameDisplayValue : stat.value}
+                        {:else}
+                            <td 
+                                class:tooltip-trigger={stat.name === "Division" || stat.name === "Rank"}
+                                class:assignment-field={stat.name === "Assignment"}
+                                on:mouseenter={stat.name === "Division" || stat.name === "Rank" ? (e) => handleFieldMouseEnter(e, stat.name) : undefined}
+                                on:mouseleave={stat.name === "Division" || stat.name === "Rank" ? handleFieldMouseLeave : undefined}
+                                on:mousemove={stat.name === "Division" || stat.name === "Rank" ? handleFieldMouseMove : undefined}>
+                                {stat.name === "Name" ? nameDisplayValue : (stat.name === "Experience" ? formatExperienceValue(stat.value) : stat.value)}
                         </td>
                     {/if}
                     {#if editable && $editing}
@@ -321,10 +549,19 @@
                     {/if}
                 </tr>
                 {/each}
+                {#if editable && $editing}
+                <tr>
+                    <td>Characteristic Points</td>
+                    <td>{characteristicPointsDisplay}</td>
+                    <td></td>
+                </tr>
+                <tr>
+                    <td>Special Skill Points</td>
+                    <td>{specialSkillPointsDisplay}</td>
+                    <td></td>
+                </tr>
+                {/if}
             </table>
-            {#if $editing}
-            <AddStat on:addStat={addStat}/>
-            {/if}
         </div>
         
         <!-- Tooltip for Division and Rank (non-edit mode only) -->
@@ -585,5 +822,9 @@
         transform: translateX(-50%);
         border: 8px solid transparent;
         border-top-color: rgb(var(--accent));
+    }
+
+    .assignment-field {
+        font-style: italic;
     }
 </style>

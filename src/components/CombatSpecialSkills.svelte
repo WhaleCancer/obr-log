@@ -4,16 +4,25 @@
     import { currentPlayerId, viewingPlayerId } from "../services/OBRHelper";
     import type { AFFSheetStats } from '../types/sheet.type';
     import DiceRoller from './DiceRoller.svelte';
+    import { specialSkillPoints, maxSpecialSkillRanks } from '../data/specialSkillPoints';
+    import { getCumulativeSpecialSkillCost, getSpecialSkillCost } from '../data/specialSkillCosts';
 
     // Export
     export let stats: AFFSheetStats[] = [];
     export let currentSkill: number = 0; // Current SKILL value from Characteristics
+    export let currentLuck: number = 0; // Current LUCK value from Characteristics
+    export let onLuckDecrease: () => void = () => {}; // Callback to decrease LUCK
+    export let grade: string = "Veteran"; // Character grade for max ranks and available points
+    export let availableSpecialSkillPoints: number = 0; // Available points (calculated at Sheet level)
+    export let pointsSpentOnOtherSections: number = 0; // Points spent in other special skills sections
 
     $: editable = $currentPlayerId === $viewingPlayerId;
+    $: availablePoints = availableSpecialSkillPoints || (specialSkillPoints[grade] || specialSkillPoints["Veteran"]);
+    $: maxRanks = maxSpecialSkillRanks[grade] || maxSpecialSkillRanks["Veteran"];
     
     // Dice roller state
     let showDiceRoller: boolean = false;
-    let selectedSkill: { name: string; total: number } | null = null;
+    let selectedSkill: { name: string; total: number; ranks: number; baseSkill: number; baseStatType: 'SKILL' | 'PSIONICS' } | null = null;
     
     // Skill descriptions for tooltips
     const skillDescriptions: Record<string, string> = {
@@ -71,8 +80,15 @@
         tooltipElement = null;
     }
     
-    function handleDiceClick(skillName: string, skillTotal: number) {
-        selectedSkill = { name: skillName, total: skillTotal };
+    function handleDiceClick(skillName: string, skillTotal: number, ranksValue: string) {
+        const ranks = parseNumber(ranksValue);
+        selectedSkill = { 
+            name: skillName, 
+            total: skillTotal,
+            ranks: ranks,
+            baseSkill: currentSkill,
+            baseStatType: 'SKILL' as const
+        };
         showDiceRoller = true;
     }
     
@@ -80,17 +96,118 @@
         showDiceRoller = false;
         selectedSkill = null;
     }
+    
+    // Calculate points spent on Combat special skills
+    function calculatePointsSpent(): number {
+        let points = 0;
+        for (const stat of stats) {
+            const rank = parseNumber(stat.value);
+            if (rank > 0) {
+                points += getCumulativeSpecialSkillCost('combat', rank);
+            }
+        }
+        return points;
+    }
+    
+    $: pointsSpent = calculatePointsSpent();
+    $: pointsRemaining = availablePoints - pointsSpentOnOtherSections - pointsSpent;
+    
+    // Handle increase rank
+    function handleIncreaseRank(stat: AFFSheetStats) {
+        const currentRank = parseNumber(stat.value);
+        const newRank = currentRank + 1;
+        
+        // Check max rank
+        if (newRank > maxRanks) {
+            alert(`Cannot increase ${stat.name} above maximum rank (${maxRanks}) for grade ${grade}`);
+            return;
+        }
+        
+        // Check if we can afford the increase (cost is the cost of the new rank)
+        const cost = getSpecialSkillCost('combat', currentRank, newRank);
+        if (pointsRemaining < cost) {
+            alert(`Not enough special skill points! You need ${cost} points but only have ${pointsRemaining} remaining.`);
+            return;
+        }
+        
+        // Update the stat
+        const updatedStats = stats.map(s => 
+            s.id === stat.id 
+                ? { ...s, value: newRank.toString() }
+                : s
+        );
+        stats = updatedStats;
+    }
+    
+    // Handle decrease rank
+    function handleDecreaseRank(stat: AFFSheetStats) {
+        const currentRank = parseNumber(stat.value);
+        if (currentRank <= 0) return;
+        
+        const newRank = currentRank - 1;
+        const updatedStats = stats.map(s => 
+            s.id === stat.id 
+                ? { ...s, value: newRank.toString() }
+                : s
+        );
+        stats = updatedStats;
+    }
+    
+    // Check if can increase rank
+    function canIncreaseRank(stat: AFFSheetStats): boolean {
+        const currentRank = parseNumber(stat.value);
+        if (currentRank >= maxRanks) return false;
+        
+        const newRank = currentRank + 1;
+        const cost = getSpecialSkillCost('combat', currentRank, newRank);
+        return pointsRemaining >= cost;
+    }
+    
+    // Check if can decrease rank
+    function canDecreaseRank(stat: AFFSheetStats): boolean {
+        const currentRank = parseNumber(stat.value);
+        return currentRank > 0;
+    }
+    
+    // Get disabled reason for increase
+    function getIncreaseDisabledReason(stat: AFFSheetStats): string {
+        const currentRank = parseNumber(stat.value);
+        if (currentRank >= maxRanks) {
+            return `Cannot exceed maximum rank (${maxRanks}) for grade ${grade}`;
+        }
+        
+        const newRank = currentRank + 1;
+        const cost = getSpecialSkillCost('combat', currentRank, newRank);
+        if (pointsRemaining < cost) {
+            return `Not enough special skill points (need ${cost}, have ${pointsRemaining})`;
+        }
+        
+        return "";
+    }
+    
+    // Get disabled reason for decrease
+    function getDecreaseDisabledReason(stat: AFFSheetStats): string {
+        const currentRank = parseNumber(stat.value);
+        if (currentRank <= 0) {
+            return "Cannot decrease below 0";
+        }
+        return "";
+    }
 </script>
 
 <div class="combat-skills-container">
     <table class="combat-skills-table">
         <thead>
             <tr>
+                {#if !($editing && editable)}
                 <th class="header-cell dice-column">🎲</th>
-                <th class="header-cell header-left">COMBAT SPECIAL SKILL</th>
+                {/if}
+                <th class="header-cell header-left">COMBAT</th>
                 <th class="header-cell">{#if editable && $editing}✏️ {/if}Ranks</th>
+                {#if !($editing && editable)}
                 <th class="header-cell">SKILL</th>
                 <th class="header-cell">Total</th>
+                {/if}
             </tr>
         </thead>
         <tbody>
@@ -99,29 +216,51 @@
             {@const isEven = index % 2 === 0}
             {@const skillTotal = calculateTotal(stat.value)}
             <tr class:has-ranks={hasRanks} class:even-row={isEven} class:odd-row={!isEven}>
+                {#if !($editing && editable)}
                 <td class="dice-cell">
                     <button 
                         class="dice-button" 
-                        on:click={() => handleDiceClick(stat.name, skillTotal)}
+                        on:click={() => handleDiceClick(stat.name, skillTotal, stat.value)}
                         title="Roll dice for {stat.name}">
                         🎲
                     </button>
                 </td>
+                {/if}
                 <td class="skill-name tooltip-trigger"
                     on:mouseenter={(e) => handleMouseEnter(e, stat.name)}
                     on:mouseleave={handleMouseLeave}
                     on:mousemove={handleMouseMove}>{stat.name}</td>
                 {#if editable && $editing}
-                <td class="skill-value ranks" 
-                    contenteditable="true" 
-                    bind:innerText={stat.value}
-                    on:blur={() => stats = [...stats]}>
+                <td class="skill-value ranks rank-editor">
+                    <button 
+                        class="adjust-button decrease-button"
+                        on:click={() => handleDecreaseRank(stat)}
+                        title={!canDecreaseRank(stat) 
+                            ? getDecreaseDisabledReason(stat)
+                            : "Decrease Rank"}
+                        disabled={!canDecreaseRank(stat)}
+                    >
+                        −
+                    </button>
+                    <span class="rank-value-display">{stat.value}</span>
+                    <button 
+                        class="adjust-button increase-button"
+                        on:click={() => handleIncreaseRank(stat)}
+                        title={!canIncreaseRank(stat)
+                            ? getIncreaseDisabledReason(stat)
+                            : "Increase Rank"}
+                        disabled={!canIncreaseRank(stat)}
+                    >
+                        +
+                    </button>
                 </td>
                 {:else}
                 <td class="skill-value ranks">{stat.value}</td>
                 {/if}
+                {#if !($editing && editable)}
                 <td class="skill-value current-skill">{currentSkill}</td>
                 <td class="skill-value total">{skillTotal}</td>
+                {/if}
             </tr>
             {/each}
         </tbody>
@@ -139,6 +278,11 @@
     <DiceRoller 
         skillName={selectedSkill.name}
         skillTotal={selectedSkill.total}
+        ranks={selectedSkill.ranks}
+        baseSkill={selectedSkill.baseSkill}
+        baseStatType={selectedSkill.baseStatType}
+        currentLuck={currentLuck}
+        onLuckDecrease={onLuckDecrease}
         on:close={handleDiceRollerClose}
     />
 {/if}
@@ -238,25 +382,31 @@
 
     .dice-cell {
         width: 3rem;
-        padding: 0.5rem;
+        padding: 0.5rem 0.5rem;
         text-align: center;
+        vertical-align: middle;
     }
     
     .dice-button {
         background: transparent;
         border: 1px solid rgba(var(--accent), 0.5);
-        border-radius: 0.25rem;
+        border-radius: 0.2rem;
         color: rgb(var(--accent));
-        font-size: 1.2rem;
+        font-size: 1rem;
         cursor: pointer;
-        padding: 0.25rem 0.5rem;
+        padding: 0.1rem 0.3rem;
         transition: all 0.2s ease;
         width: 100%;
+        line-height: 1.2;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 0;
         
         &:hover {
             background: rgba(var(--accent), 0.2);
             border-color: rgb(var(--accent));
-            transform: scale(1.1);
+            transform: scale(1.05);
         }
         
         &:active {
@@ -295,6 +445,50 @@
     .skill-value.ranks:hover {
         color: rgb(var(--accent));
         transition: color 0.2s ease;
+    }
+    
+    .rank-editor {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.25rem;
+        padding: 0.25rem;
+    }
+    
+    .rank-value-display {
+        min-width: 1.5rem;
+        text-align: center;
+        font-weight: 600;
+        color: rgb(var(--accent));
+    }
+    
+    .adjust-button {
+        background: rgba(var(--accent), 0.1);
+        border: 1px solid rgba(var(--accent), 0.5);
+        border-radius: 0.2rem;
+        color: rgb(var(--accent));
+        font-size: 1rem;
+        font-weight: 600;
+        cursor: pointer;
+        padding: 0.1rem 0.4rem;
+        transition: all 0.2s ease;
+        min-width: 1.8rem;
+        line-height: 1.2;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        
+        &:hover:not(:disabled) {
+            background: rgba(var(--accent), 0.3);
+            border-color: rgb(var(--accent));
+        }
+        
+        &:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+            background: rgba(var(--accent), 0.05);
+            border-color: rgba(var(--accent), 0.2);
+        }
     }
 
     .tooltip-trigger {

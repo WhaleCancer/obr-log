@@ -8,6 +8,9 @@ export interface DiceRollLogEntry {
     playerName: string;
     playerId: string;
     skillName: string;
+    ranks?: number; // Optional for backward compatibility
+    baseSkill?: number; // Optional for backward compatibility - Base SKILL or PSIONICS value used
+    baseStatType?: 'SKILL' | 'PSIONICS'; // Optional for backward compatibility - Which base stat was used
     die1: number;
     die2: number;
     modifier: number;
@@ -22,6 +25,8 @@ export interface ChatMessage {
     playerName: string;
     playerId: string;
     message: string;
+    isCharacteristicChange?: boolean; // Optional for backward compatibility
+    changeDirection?: 'increase' | 'decrease'; // Optional for backward compatibility
 }
 
 export type LogEntry = DiceRollLogEntry | ChatMessage;
@@ -220,6 +225,9 @@ function createDiceRollsStore() {
             });
         },
         addRoll: (entry: Omit<DiceRollLogEntry, 'id' | 'timestamp'>) => {
+            // Note: Sound is played in DiceRoller component during animation
+            // We don't play it here to avoid double-playing
+            
             const id = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
             const timestamp = new Date().toISOString();
             const newEntry: DiceRollLogEntry = {
@@ -249,6 +257,40 @@ function createDiceRollsStore() {
 
             update((log) => {
                 const updated = [...log, newMessage];
+                syncLog(updated).catch(e => console.warn('Failed to sync log:', e));
+                return updated;
+            });
+        },
+        addCharacteristicChange: (characteristicName: string, oldValue: string, newValue: string) => {
+            const playerName = get(currentPlayerName) || 'Unknown Player';
+            const playerId = get(currentPlayerId) || 'unknown';
+            const id = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+            const timestamp = new Date().toISOString();
+            
+            const oldNum = parseInt(oldValue) || 0;
+            const newNum = parseInt(newValue) || 0;
+            const changeDirection = newNum > oldNum ? 'increase' : newNum < oldNum ? 'decrease' : null;
+            
+            const changeMsg = `${characteristicName} Current: ${oldValue} → ${newValue}`;
+            const newMessage: ChatMessage = {
+                id,
+                timestamp,
+                playerName,
+                playerId,
+                message: changeMsg,
+                isCharacteristicChange: true,
+                changeDirection: changeDirection || undefined
+            };
+
+            update((log) => {
+                const updated = [...log, newMessage];
+                syncLog(updated).catch(e => console.warn('Failed to sync log:', e));
+                return updated;
+            });
+        },
+        removeEntry: (entryId: string) => {
+            update((log) => {
+                const updated = log.filter(entry => entry.id !== entryId);
                 syncLog(updated).catch(e => console.warn('Failed to sync log:', e));
                 return updated;
             });

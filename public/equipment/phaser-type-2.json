@@ -1,0 +1,31 @@
+{
+  "name": "Phaser Type-2",
+  "icon": "/equipment/images/Federation_Type_2_Phaser_icon.png",
+  "type": "Energy Weapon (Phaser)",
+  "manufacturer": "Starfleet Command",
+  "price": "800 Cr",
+  "slot": "Right Hand",
+  "hands": 1,
+  "allowedSlots": ["Right Hand", "Left Hand"],
+  "specialSkill": "Firearms - Light",
+  "range": "17 squares (Short)",
+  "special": "Stun/Kill settings (see description)",
+  "damageTrack": {
+    "1": 4,
+    "2": 5,
+    "3": 5,
+    "4": 5,
+    "5": 5,
+    "6": 6,
+    "7+": 7
+  },
+  "description": "The Type-2 phaser, commonly referred to as the standard phaser or phaser pistol, is the standard-issue sidearm for Starfleet personnel. This reliable weapon strikes an excellent balance between power, range, and portability, making it the preferred choice for most Starfleet officers and crew members.\n\nThe Type-2 phaser features two firing modes:\n- **Stun Setting:** Inflicts the same damage as the kill setting but will only reduce a target's STAMINA to 0 without causing death. Some creatures may have resistance or immunity to stun effects. The weapon automatically switches to stun after delivering a fatal blow if the target would have been killed, ensuring non-lethal takedowns when using this mode.\n- **Kill Setting:** Inflicts full damage and can kill targets when their STAMINA reaches 0.\n\nThe phaser pistol is designed for comfortable handling and ease of use, with intuitive controls and a robust power cell that provides excellent reliability in the field. Its range of 17 squares strikes an excellent balance between effectiveness and portability. At maximum range, an enemy closing at double-move speed (8 squares per round) will take 2 rounds to reach melee, allowing 2 shots, while a walking enemy (4 squares per round) allows up to 4 shots. This makes it ideal for shipboard combat and away team missions where maneuverability is key.",
+  "stats": {
+    "Damage Track": "4/5/5/5/5/6/7",
+    "Range": "17 squares (Short)",
+    "Special": "Stun/Kill settings",
+    "Manufacturer": "Starfleet Command",
+    "Type": "Energy Weapon (Phaser)",
+    "Price": "800 Cr"
+  }
+}

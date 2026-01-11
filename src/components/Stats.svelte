@@ -4,20 +4,9 @@
 
     // Import components
     import RemoveStat from "./RemoveStat.svelte";
-    import AddStat from "./AddStat.svelte"
 
-    $: newStatId = stats.length > 0 ? Math.max(...stats.map(t => t.id)) + 1 : 1
     $: editable = $currentPlayerId === $viewingPlayerId; 
 
-    function addStat(){
-        stats = [...stats,
-                {
-                    id: newStatId,
-                    name: "New Field",
-                    value: "-"
-                }
-            ]
-        }
     function removeStat(stat) {
         stats = stats.filter(t => t.id !== stat.id)
     }
@@ -48,9 +37,6 @@
     </tr>
     {/each}
 </table>
-{#if $editing}
-<AddStat on:addStat={addStat}/>
-{/if}
 
 
 

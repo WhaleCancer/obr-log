@@ -18,26 +18,31 @@ const initialSheet = {
           },
           {
             id: 2,
+            name: "Grade",
+            value: "Veteran"
+          },
+          {
+            id: 3,
             name: "Species",
             value: "Human"
           },
           {
-            id: 3,
+            id: 4,
             name: "Rank",
             value: "Lieutenant Commander"
           },
           {
-            id: 4,
+            id: 5,
             name: "Division",
             value: "Command"
           },
           {
-            id: 5,
+            id: 6,
             name: "Assignment",
             value: "USS Castor"
           },
           {
-            id: 6,
+            id: 7,
             name: "Experience",
             value: "0"
           }
@@ -386,17 +391,17 @@ const initialSheet = {
           {
             id: 1,
             name: "SKILL",
-            value: "0/0"
+            value: "4/4"
           },
           {
             id: 2,
             name: "STAMINA",
-            value: "0/0"
+            value: "8/8"
           },
           {
             id: 3,
             name: "LUCK",
-            value: "0/0"
+            value: "9/9"
           },
           {
             id: 4,

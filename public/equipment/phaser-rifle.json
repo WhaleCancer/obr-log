@@ -1,0 +1,31 @@
+{
+  "name": "Phaser Rifle",
+  "icon": "/equipment/images/Federation_Type_3_Phaser_Rifle_icon.png",
+  "type": "Energy Weapon (Phaser)",
+  "manufacturer": "Starfleet Command",
+  "price": "960 Cr",
+  "slot": "Right Hand",
+  "hands": 2,
+  "allowedSlots": ["Right Hand"],
+  "specialSkill": "Firearms - Light",
+  "range": "33 squares (Long)",
+  "special": "Stun/Kill settings (see description)",
+  "damageTrack": {
+    "1": 4,
+    "2": 5,
+    "3": 5,
+    "4": 5,
+    "5": 6,
+    "6": 7,
+    "7+": 8
+  },
+  "description": "The Phaser Rifle is the most powerful standard-issue phaser weapon in Starfleet's arsenal. Designed for extended range combat and maximum firepower, the phaser rifle is typically issued to security personnel, away teams expecting heavy resistance, and in situations where superior range and stopping power are required.\n\nThe phaser rifle features two firing modes:\n- **Stun Setting:** Inflicts the same damage as the kill setting but will only reduce a target's STAMINA to 0 without causing death. Some creatures may have resistance or immunity to stun effects. The weapon automatically switches to stun after delivering a fatal blow if the target would have been killed, ensuring non-lethal takedowns when using this mode.\n- **Kill Setting:** Inflicts full damage and can kill targets when their STAMINA reaches 0.\n\nWith its extended barrel and enhanced power systems, the phaser rifle provides superior range and increased damage output compared to the smaller Type-1 and Type-2 phasers. The weapon's long range of 33 squares ensures significant tactical advantage: at maximum range, an enemy closing at double-move speed (8 squares per round) will take 4 rounds to reach melee, allowing 4 shots, while a walking enemy (4 squares per round) allows up to 8 shots before closing distance. This extended range makes it excellent for covering fire, defensive positions, and engaging targets at distance during planetary exploration missions.",
+  "stats": {
+    "Damage Track": "4/5/5/5/6/7/8",
+    "Range": "33 squares (Long)",
+    "Special": "Stun/Kill settings",
+    "Manufacturer": "Starfleet Command",
+    "Type": "Energy Weapon (Phaser)",
+    "Price": "960 Cr"
+  }
+}
