@@ -133,6 +133,9 @@
         console.log(`Rolling dice for ${item.name} using special skill: ${item.specialSkill}`);
     }
 
+    // Base URL for fetching assets (handles GitHub Pages base path)
+    const baseUrl = import.meta.env.BASE_URL || '/star-trek-character-sheet/';
+
     // Available equipment files (defined statically for now, can be extended to load dynamically)
     const equipmentFiles = [
         "phaser-type-1.json",
@@ -151,7 +154,7 @@
             // Load all equipment files
             const equipmentPromises = equipmentFiles.map(async (file) => {
                 try {
-                    const response = await fetch(`/equipment/${file}`);
+                    const response = await fetch(`${baseUrl}equipment/${file}`);
                     if (!response.ok) {
                         console.warn(`Failed to load ${file}: ${response.statusText}`);
                         return null;
