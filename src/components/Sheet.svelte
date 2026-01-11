@@ -523,7 +523,7 @@
                             <div class="slot-label">Right Hand</div>
                             <div 
                                 class="slot-content tooltip-trigger"
-                                on:mouseenter={(e) => equipment["Right Hand"] ? showEquipmentTooltip(e, equipment["Right Hand"]!) : null}
+                                on:mouseenter={(e) => { const item = equipment["Right Hand"]; if (item) showEquipmentTooltip(e, item); }}
                                 on:mouseleave={hideEquipmentTooltip}
                                 on:mousemove={updateTooltipPosition}
                             >
@@ -565,7 +565,7 @@
                             <div 
                                 class="slot-content tooltip-trigger"
                                 class:linked-equipment={isLinkedEquipment("Left Hand")}
-                                on:mouseenter={(e) => equipment["Left Hand"] ? showEquipmentTooltip(e, equipment["Left Hand"]!) : null}
+                                on:mouseenter={(e) => { const item = equipment["Left Hand"]; if (item) showEquipmentTooltip(e, item); }}
                                 on:mouseleave={hideEquipmentTooltip}
                                 on:mousemove={updateTooltipPosition}
                             >
@@ -612,7 +612,7 @@
                             <div class="slot-label">Body</div>
                             <div 
                                 class="slot-content tooltip-trigger"
-                                on:mouseenter={(e) => equipment["Body"] ? showEquipmentTooltip(e, equipment["Body"]!) : null}
+                                on:mouseenter={(e) => { const item = equipment["Body"]; if (item) showEquipmentTooltip(e, item); }}
                                 on:mouseleave={hideEquipmentTooltip}
                                 on:mousemove={updateTooltipPosition}
                             >
@@ -653,7 +653,7 @@
                             <div class="slot-label">Head</div>
                             <div 
                                 class="slot-content tooltip-trigger"
-                                on:mouseenter={(e) => equipment["Head"] ? showEquipmentTooltip(e, equipment["Head"]!) : null}
+                                on:mouseenter={(e) => { const item = equipment["Head"]; if (item) showEquipmentTooltip(e, item); }}
                                 on:mouseleave={hideEquipmentTooltip}
                                 on:mousemove={updateTooltipPosition}
                             >
