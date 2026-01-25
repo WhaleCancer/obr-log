@@ -180,9 +180,14 @@ const initObrContext = async () => {
   obrReady = true;
   const self = await getSelfPlayer();
   localPlayerId = self?.id || null;
-  const role = (self?.role || "").toString().toLowerCase();
-  isDm = role === "gm" || role === "dm";
+  const roleFromSelf = self?.role;
+  const roleFromApi = await window.OBR?.player?.getRole?.();
+  const role = (roleFromSelf || roleFromApi || "").toString().toLowerCase();
+  isDm = role === "gm" || role === "dm" || role === "gamemaster" || role === "game_master";
   cachedPlayers = await getAllPlayers(self);
+  if (localPlayerId && !cachedPlayers.some((p) => p.id === localPlayerId)) {
+    cachedPlayers = [self || { id: localPlayerId, name: "GM" }, ...cachedPlayers];
+  }
   if (isDm && self?.id && !cachedPlayers.some((p) => p.id === self.id)) {
     cachedPlayers = [self, ...cachedPlayers];
   }
@@ -201,7 +206,7 @@ const initObrContext = async () => {
   if (window.OBR?.party?.onChange) {
     window.OBR.party.onChange((players) => {
       cachedPlayers = players;
-      if (isDm && localPlayerId && !cachedPlayers.some((p) => p.id === localPlayerId)) {
+      if (localPlayerId && !cachedPlayers.some((p) => p.id === localPlayerId)) {
         const self = players.find((p) => p.id === localPlayerId) || { id: localPlayerId, name: "GM" };
         cachedPlayers = [self, ...cachedPlayers];
       }
