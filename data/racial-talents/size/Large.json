@@ -1,0 +1,6 @@
+﻿{
+    "cost":  4,
+    "description":  "This race is larger than Personal-sized (Medium) creatures, but smaller than Huge creatures. Large creatures are typically about the size of a horse.\nWhen a Personal-sized (Medium) creature attacks a Large creature, damage is rolled normally. If a Large creature attacks a Personal-sized creature, damage is rolled as normal and then +2 is added to the damage roll. Armour is applied as normal before remaining points are deducted from STAMINA.\nThis race possesses exceptional physical strength, applying a bonus of +2 to damage rolls for natural weapons or unarmed attacks. There is also a +2 bonus to tests to lift or break objects, and the race may be able to perform feats of strength that would be impossible for normal creatures, such as bending bars, breaking chains, or lifting massive weights.\nThis talent is exclusive with the minor racial talent [Incredibly Strong](Minor-Racial-Talents/Incredibly-Strong.md) - a race cannot have both talents.",
+    "name":  "Large",
+    "type":  "Major"
+}

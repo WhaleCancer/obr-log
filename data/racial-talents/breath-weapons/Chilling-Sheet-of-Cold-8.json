@@ -1,0 +1,6 @@
+﻿{
+    "cost":  8,
+    "description":  "This race can shoot out a chilling sheet of cold that is wide enough to hit two opponents at once. Unless its targets can roll their current SKILL score or less on two dice, they will lose 4 STAMINA points. The creature can breathe cold once every three Attack Rounds.",
+    "name":  "Chilling Sheet of Cold (Adult/Ancient)",
+    "type":  "Major"
+}

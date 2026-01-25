@@ -1,0 +1,15 @@
+{
+  "name": "AFF Star Trek",
+  "version": "0.1.10",
+  "manifest_version": 1,
+  "icon": "icon.svg?v=17",
+  "author": "AFFWiki",
+  "description": "AFF Star Trek popover panel for Owlbear Rodeo.",
+  "action": {
+    "title": "AFF Star Trek",
+    "icon": "icon.svg?v=17",
+    "popover": "index.html?v=17",
+    "height": 1200,
+    "width": 900
+  }
+}

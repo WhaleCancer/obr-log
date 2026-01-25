@@ -2,12 +2,144 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/icon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Star Trek Character Sheet</title>
+    <title>AFF Star Trek</title>
+    <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
-    <div id="app"></div>
-    <script type="module" src="/src/main.ts"></script>
+    <main class="panel" data-active-tab="sheet">
+      <div class="player-tabs" data-role="player-tabs" hidden></div>
+      <nav class="tabs" aria-label="Sheet modes">
+        <div class="tabs-group tabs-group--actions">
+          <button class="tab-button" type="button" data-action="new" title="NEW">
+            📝
+          </button>
+          <button class="tab-button" type="button" data-action="save" title="SAVE">
+            💾
+          </button>
+          <button class="tab-button" type="button" data-action="load" title="LOAD">
+            📂
+          </button>
+        </div>
+        <div class="tabs-divider" aria-hidden="true"></div>
+        <div class="tabs-group tabs-group--modes">
+          <button class="tab-button is-active" type="button" data-tab="sheet" title="SHEET">
+            📄
+          </button>
+          <button class="tab-button" type="button" data-tab="edit" title="EDIT">
+            ✏️
+          </button>
+          <button class="tab-button" type="button" data-tab="level-up" title="LEVEL UP">
+            🎖️
+          </button>
+        </div>
+      </nav>
+      <section class="tab-content">
+        <div class="tab-panel is-active" data-tab-panel="sheet">
+          <div class="field-group">
+            <label class="field">
+              <span class="field__label">GRADE</span>
+              <select class="field__control" data-role="grade-select"></select>
+            </label>
+            <label class="field">
+              <span class="field__label">BACKGROUND</span>
+              <select class="field__control" data-role="background-select"></select>
+            </label>
+          </div>
+          <div class="stats-section">
+            <div class="stats-header">
+              <h2 class="section-title" data-role="stats-title">STATS</h2>
+            </div>
+            <div class="stats-badges" data-role="stats-badges"></div>
+          </div>
+          <div class="stats-section">
+            <div class="stats-header">
+              <h2 class="section-title">DERIVED STATS</h2>
+            </div>
+            <div class="stats-badges" data-role="derived-stats-badges"></div>
+          </div>
+          <div class="skills-section">
+            <div class="skills-header">
+              <h2 class="section-title" data-role="skills-title">SKILLS</h2>
+            </div>
+            <div class="skill-picker-modal" data-role="skill-category-picker" hidden>
+              <div class="skill-picker-card">
+                <div class="skill-category-grid" data-role="skill-category-buttons"></div>
+                <div class="skill-picker-actions">
+                  <div class="skill-picker-points" data-role="skill-points-inline">
+                    <span class="stat-name">SKILL POINTS</span>
+                    <span class="stat-value">0/0</span>
+                  </div>
+                  <button class="skill-picker-button" type="button" data-role="skill-cancel">Cancel</button>
+                </div>
+              </div>
+            </div>
+            <div class="skill-picker-modal" data-role="skill-list-picker" hidden>
+              <div class="skill-picker-card skill-picker-card--skills">
+                <div class="skill-picker-list two-column" data-role="skill-list"></div>
+                <div class="skill-picker-actions">
+                  <div class="skill-picker-points" data-role="skill-points-inline">
+                    <span class="stat-name">SKILL POINTS</span>
+                    <span class="stat-value">0/0</span>
+                  </div>
+                  <button class="skill-picker-button" type="button" data-role="skill-done">Done</button>
+                </div>
+              </div>
+            </div>
+            <div class="skills-list" data-role="skills-list"></div>
+          </div>
+          <div class="features-section">
+            <div class="features-header">
+              <h2 class="section-title" data-role="features-title">FEATURES</h2>
+            </div>
+            <div class="skill-picker-modal" data-role="feature-category-picker" hidden>
+              <div class="skill-picker-card">
+                <div class="skill-category-grid" data-role="feature-category-buttons"></div>
+                <div class="skill-picker-actions">
+                  <div class="skill-picker-points" data-role="feature-points-inline">
+                    <span class="stat-name">FEATURE POINTS</span>
+                    <span class="stat-value">0/0</span>
+                  </div>
+                  <button class="skill-picker-button" type="button" data-role="feature-cancel">Cancel</button>
+                </div>
+              </div>
+            </div>
+            <div class="skill-picker-modal" data-role="feature-list-picker" hidden>
+              <div class="skill-picker-card skill-picker-card--skills">
+                <div class="skill-picker-list two-column" data-role="feature-list"></div>
+                <div class="skill-picker-actions">
+                  <button class="skill-picker-button" type="button" data-role="feature-back">Back</button>
+                  <button class="skill-picker-button" type="button" data-role="feature-cancel">Cancel</button>
+                </div>
+              </div>
+            </div>
+            <div class="skill-picker-modal" data-role="feature-selection-picker" hidden>
+              <div class="skill-picker-card">
+                <div class="feature-selection-content">
+                  <h3 class="feature-selection-title" data-role="feature-selection-title">Select Option</h3>
+                  <div class="feature-selection-body" data-role="feature-selection-body"></div>
+                </div>
+                <div class="skill-picker-actions">
+                  <button class="skill-picker-button" type="button" data-role="feature-selection-confirm">Confirm</button>
+                  <button class="skill-picker-button" type="button" data-role="feature-selection-cancel">Cancel</button>
+                </div>
+              </div>
+            </div>
+            <div class="features-list" data-role="features-list"></div>
+          </div>
+        </div>
+        <div class="tab-panel" data-tab-panel="director-edit">
+          <p>DIRECTOR EDIT mode ready.</p>
+        </div>
+        <div class="tab-panel" data-tab-panel="edit">
+          <p>EDIT mode ready.</p>
+        </div>
+        <div class="tab-panel" data-tab-panel="level-up">
+          <p>LEVEL UP mode ready.</p>
+        </div>
+      </section>
+    </main>
+    <script src="https://unpkg.com/@owlbear-rodeo/sdk@1.3.8/dist/OBR.js"></script>
+    <script src="./main.js?v=17"></script>
   </body>
 </html>

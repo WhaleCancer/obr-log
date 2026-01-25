@@ -1,0 +1,6 @@
+﻿{
+    "cost":  12,
+    "description":  "This race is truly massive, far larger than even Huge creatures. Colossal creatures are typically the size of a large building, sailing ship, or starship - towering over most other beings. These are among the largest creatures that can exist in the world of Titan.\nWhen a Personal-sized (Medium) creature attacks a Colossal creature, the damage rolled on the weapon table is divided by four (rounded down), and then armour applied as usual. If a Colossal creature attacks a Personal-sized creature, damage is rolled as normal and then quadrupled. Again, armour is applied as normal before remaining points are deducted from STAMINA.\nIf a Small creature attacks a Colossal creature, the damage is divided by eight (rounded down). A Colossal creature attacking a Small creature will multiply the damage by eight.\nIf a Huge creature attacks a Colossal creature, the damage is halved (rounded down). A Colossal creature attacking a Huge creature will double the damage applied.",
+    "name":  "Colossal",
+    "type":  "Major"
+}

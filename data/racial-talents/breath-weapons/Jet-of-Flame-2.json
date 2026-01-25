@@ -1,0 +1,6 @@
+{
+    "cost":  2,
+    "description":  "This race can breathe a wide jet of flame every other Attack Round. This is broad enough to hit two opponents, and requires a Test for LUCK to avoid it. It will scorch away 1 STAMINA points if it hits. The creatures can produce one of these every other round.",
+    "name":  "Jet of Flame (Wyrmling)",
+    "type":  "Minor"
+}

@@ -1,0 +1,6 @@
+{
+    "cost":  2,
+    "description":  "This race can breathe out a stream of ice that will freeze its opponent. This will hit its target on a roll of 1 or 2 on one die, causing an extra 2 points of damage.",
+    "name":  "Stream of Ice (Wyrmling)",
+    "type":  "Minor"
+}

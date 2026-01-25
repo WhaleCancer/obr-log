@@ -1,0 +1,6 @@
+﻿{
+    "cost":  4,
+    "description":  "This race is completely immune to poison damage and poison-based attacks. They take no damage from toxic substances, poisonous gas, venom, or any poison-based magical effects. This immunity extends to ingested poisons, contact poisons, and inhaled toxins.",
+    "name":  "Poison Immunity",
+    "type":  "Minor"
+}

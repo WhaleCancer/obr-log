@@ -1,0 +1,5 @@
+﻿{
+    "description":  "Creatures with this talent have bodies that are naturally resistant to cutting and piercing weapons. When struck by edged or pointed weapons (such as swords, daggers, spears, arrows, etc.), they only take 1 point of damage regardless of the damage roll. Blunt or crushing weapons (such as clubs, maces, hammers, etc.) inflict normal damage.\nThis talent is particularly common among undead creatures such as Skeletons, whose bony structure makes them difficult to harm with bladed weapons.",
+    "name":  "Resistance to Edged Weapons",
+    "type":  "Major"
+}

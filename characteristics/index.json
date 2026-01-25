@@ -1,0 +1,11 @@
+{
+  "files": [
+    "BODY.json",
+    "HEALTH.json",
+    "LUCK.json",
+    "MIND.json",
+    "POWER.json",
+    "ATTACKS.json",
+    "MOVE.json"
+  ]
+}

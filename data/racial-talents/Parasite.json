@@ -1,0 +1,5 @@
+﻿{
+    "description":  "This alien talent allows the alien to steal STAMINA from a target. The alien must touch (but not hit) the target, which may require a successful unarmed attack with an unwilling target. The touch will drain 1-3 STAMINA from the target, healing the alien by the same amount. Armour does not protect against this, although sealed armour will prevent this talent being used if worn by either the target or alien.",
+    "name":  "Parasite",
+    "type":  "Major"
+}

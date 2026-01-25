@@ -1,0 +1,5 @@
+﻿{
+    "description":  "This alien race can transfer their own STAMINA to another target with a touch. As much STAMINA can be transferred with a single touch as the alien has current LUCK points. This reduction in STAMINA is not a wound, and so the alien cannot be treated with a medikit or similar to restore it, but the STAMINA can be regained through eating and sleeping.",
+    "name":  "Healer",
+    "type":  "Minor"
+}

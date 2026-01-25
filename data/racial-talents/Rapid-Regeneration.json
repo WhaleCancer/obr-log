@@ -1,0 +1,5 @@
+﻿{
+    "description":  "This alien talent grants regeneration of injuries and wounds. The alien recovers 2 STAMINA per hour (on top of recovery from food and sleep) and will recover lost SKILL at a rate of 1 point per day. Medical attention will still be of benefit.",
+    "name":  "Rapid Regeneration",
+    "type":  "Major"
+}

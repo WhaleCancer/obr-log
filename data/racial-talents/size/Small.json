@@ -1,0 +1,6 @@
+﻿{
+    "cost":  2,
+    "description":  "This race is significantly smaller than the average Medium-sized creature. Small creatures are typically about the size of a cat or smaller.\nWhen a Small creature attacks a Medium creature, the damage rolled on the weapon table is halved (rounded down), and then armour applied as usual. If a Medium creature attacks a Small creature, damage is rolled as normal and then doubled. Again, armour is applied as normal before remaining points are deducted from STAMINA.\nIf a Small creature attacks a Huge creature, the damage is divided by four (rounded down). A Huge creature attacking a Small creature will quadruple the damage applied.",
+    "name":  "Small",
+    "type":  "Minor"
+}

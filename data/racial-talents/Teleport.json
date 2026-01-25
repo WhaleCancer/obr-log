@@ -1,0 +1,5 @@
+﻿{
+    "description":  "Members of this alien race can teleport short distances as a single action. The range is normally limited to 100 yards or so, and only to a location within sight. The alien cannot teleport through metal or stone walls, force fields or other such barriers. The alien can carry normal equipment, but cannot carry another person.",
+    "name":  "Teleport",
+    "type":  "Major"
+}

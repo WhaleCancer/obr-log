@@ -1,0 +1,6 @@
+{
+    "cost":  6,
+    "description":  "This race can create a huge stinking cloud of poisonous gas up to three metres in diameter. Anyone caught within the cloud must successfully Test for LUCK or lose 3 STAMINA points. A successful LUCK roll means they only take a single point of damage. The creature can produce such a cloud once every six Attack Rounds.",
+    "name":  "Poisonous Gas Cloud (Young)",
+    "type":  "Minor"
+}

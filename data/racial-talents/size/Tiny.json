@@ -1,0 +1,6 @@
+{
+    "cost":  0,
+    "description":  "This race is extremely small, significantly smaller than Small creatures. Tiny creatures are typically about the size of a mouse, insect, or smaller.\nWhen a Tiny creature attacks a Small creature, the damage rolled on the weapon table is halved (rounded down), and then armour applied as usual. If a Small creature attacks a Tiny creature, damage is rolled as normal and then doubled. Again, armour is applied as normal before remaining points are deducted from STAMINA.\nWhen a Tiny creature attacks a Medium creature, the damage rolled on the weapon table is divided by four (rounded down), and then armour applied as usual. If a Medium creature attacks a Tiny creature, damage is rolled as normal and then quadrupled. Again, armour is applied as normal before remaining points are deducted from STAMINA.\nIf a Tiny creature attacks a Huge creature, the damage is divided by eight (rounded down). A Huge creature attacking a Tiny creature will multiply the damage by eight.\nIf a Tiny creature attacks a Colossal creature, the damage is divided by sixteen (rounded down). A Colossal creature attacking a Tiny creature will multiply the damage by sixteen.",
+    "name":  "Tiny",
+    "type":  "Minor"
+}
