@@ -183,6 +183,9 @@ const initObrContext = async () => {
   const role = (self?.role || "").toString().toLowerCase();
   isDm = role === "gm" || role === "dm";
   cachedPlayers = await getAllPlayers(self);
+  if (isDm && self?.id && !cachedPlayers.some((p) => p.id === self.id)) {
+    cachedPlayers = [self, ...cachedPlayers];
+  }
   activePlayerId = localPlayerId;
 
   const playerTabs = getPlayerTabsContainer();
@@ -198,6 +201,10 @@ const initObrContext = async () => {
   if (window.OBR?.party?.onChange) {
     window.OBR.party.onChange((players) => {
       cachedPlayers = players;
+      if (isDm && localPlayerId && !cachedPlayers.some((p) => p.id === localPlayerId)) {
+        const self = players.find((p) => p.id === localPlayerId) || { id: localPlayerId, name: "GM" };
+        cachedPlayers = [self, ...cachedPlayers];
+      }
       if (isDm) {
         renderPlayerTabs(cachedPlayers, activePlayerId);
       }
