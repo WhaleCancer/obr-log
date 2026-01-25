@@ -3622,3 +3622,14 @@ var OBR = (() => {
   var index_default = OBR;
   return __toCommonJS(index_exports);
 })();
+try {
+  var obrGlobal = (OBR && OBR.default) ? OBR.default : OBR;
+  if (typeof globalThis !== "undefined") {
+    globalThis.OBR = globalThis.OBR || obrGlobal;
+  }
+  if (typeof window !== "undefined") {
+    window.OBR = window.OBR || obrGlobal;
+  }
+} catch (e) {
+  // no-op
+}
