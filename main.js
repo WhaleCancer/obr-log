@@ -81,6 +81,34 @@ const showPlayerTabsMessage = (message) => {
   container.style.display = "flex";
 };
 
+const OBR_SDK_URLS = [
+  "https://unpkg.com/@owlbear-rodeo/sdk@1.3.8/dist/OBR.js",
+  "https://cdn.jsdelivr.net/npm/@owlbear-rodeo/sdk@1.3.8/dist/OBR.js",
+];
+
+const loadScript = (src) =>
+  new Promise((resolve, reject) => {
+    const script = document.createElement("script");
+    script.src = src;
+    script.async = true;
+    script.onload = () => resolve(true);
+    script.onerror = () => reject(new Error(`Failed to load ${src}`));
+    document.head.appendChild(script);
+  });
+
+const ensureObrSdk = async () => {
+  if (window.OBR?.onReady) return true;
+  for (const url of OBR_SDK_URLS) {
+    try {
+      await loadScript(url);
+      if (window.OBR?.onReady) return true;
+    } catch (error) {
+      console.warn("OBR SDK load failed:", error);
+    }
+  }
+  return false;
+};
+
 const getCharactersFromMetadata = (metadata) => {
   const raw = metadata?.[METADATA_KEY];
   if (!raw || typeof raw !== "object") return {};
@@ -184,7 +212,8 @@ const switchActivePlayer = async (playerId) => {
 };
 
 const initObrContext = async () => {
-  if (!window.OBR?.onReady) {
+  const obrLoaded = await ensureObrSdk();
+  if (!obrLoaded || !window.OBR?.onReady) {
     showPlayerTabsMessage("OBR SDK not available; player tabs disabled.");
     return false;
   }
