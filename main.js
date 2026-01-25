@@ -199,7 +199,8 @@ const initObrContext = async () => {
       renderPlayerTabs(cachedPlayers, activePlayerId);
       playerTabs.hidden = false;
     } else {
-      playerTabs.hidden = true;
+      playerTabs.textContent = `Player tabs are GM-only (role: ${role || "unknown"})`;
+      playerTabs.hidden = false;
     }
   }
 
