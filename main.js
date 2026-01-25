@@ -72,6 +72,15 @@ const activePanelKey = () =>
 const getPlayerTabsContainer = () =>
   document.querySelector(PLAYER_TABS_SELECTOR);
 
+const showPlayerTabsMessage = (message) => {
+  const container = getPlayerTabsContainer();
+  if (!container) return;
+  container.textContent = message;
+  container.hidden = false;
+  container.removeAttribute("hidden");
+  container.style.display = "flex";
+};
+
 const getCharactersFromMetadata = (metadata) => {
   const raw = metadata?.[METADATA_KEY];
   if (!raw || typeof raw !== "object") return {};
@@ -175,7 +184,10 @@ const switchActivePlayer = async (playerId) => {
 };
 
 const initObrContext = async () => {
-  if (!window.OBR?.onReady) return false;
+  if (!window.OBR?.onReady) {
+    showPlayerTabsMessage("OBR SDK not available; player tabs disabled.");
+    return false;
+  }
   await window.OBR.onReady();
   obrReady = true;
   const self = await getSelfPlayer();
@@ -198,9 +210,10 @@ const initObrContext = async () => {
     if (isDm) {
       renderPlayerTabs(cachedPlayers, activePlayerId);
       playerTabs.hidden = false;
+      playerTabs.removeAttribute("hidden");
+      playerTabs.style.display = "flex";
     } else {
-      playerTabs.textContent = `Player tabs are GM-only (role: ${role || "unknown"})`;
-      playerTabs.hidden = false;
+      showPlayerTabsMessage(`Player tabs are GM-only (role: ${role || "unknown"})`);
     }
   }
 
