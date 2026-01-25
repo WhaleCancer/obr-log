@@ -60,6 +60,7 @@ const PERSIST_DEBOUNCE_MS = 400;
 let obrReady = false;
 let isDm = false;
 let localPlayerId = null;
+let localPlayerName = "";
 let activePlayerId = null;
 let cachedPlayers = [];
 let persistenceReady = false;
@@ -82,42 +83,6 @@ const showPlayerTabsMessage = (message) => {
 };
 
 const getObrGlobal = () => window.OBR || globalThis.OBR;
-
-const OBR_SDK_URLS = [
-  "https://unpkg.com/@owlbear-rodeo/sdk@1.3.8/dist/OBR.js",
-  "https://cdn.jsdelivr.net/npm/@owlbear-rodeo/sdk@1.3.8/dist/OBR.js",
-];
-
-const loadScript = (src) =>
-  new Promise((resolve, reject) => {
-    const script = document.createElement("script");
-    script.src = src;
-    script.async = true;
-    script.onload = () => resolve(true);
-    script.onerror = () => reject(new Error(`Failed to load ${src}`));
-    document.head.appendChild(script);
-  });
-
-const ensureObrSdk = async () => {
-  const existing = getObrGlobal();
-  if (existing?.onReady) {
-    window.OBR = existing;
-    return true;
-  }
-  for (const url of OBR_SDK_URLS) {
-    try {
-      await loadScript(url);
-      const loaded = getObrGlobal();
-      if (loaded?.onReady) {
-        window.OBR = loaded;
-        return true;
-      }
-    } catch (error) {
-      console.warn("OBR SDK load failed:", error);
-    }
-  }
-  return false;
-};
 
 const getCharactersFromMetadata = (metadata) => {
   const raw = metadata?.[METADATA_KEY];
@@ -174,12 +139,25 @@ const renderPlayerTabs = (players, activeId) => {
   const container = getPlayerTabsContainer();
   if (!container) return;
   container.innerHTML = "";
+  const orderedPlayers = [];
+  if (localPlayerId) {
+    orderedPlayers.push({
+      id: localPlayerId,
+      name: localPlayerName || "GM",
+      isSelf: true,
+    });
+  }
   players.forEach((player) => {
+    if (!player?.id || player.id === localPlayerId) return;
+    orderedPlayers.push({ ...player, isSelf: false });
+  });
+  orderedPlayers.forEach((player) => {
     const button = document.createElement("button");
     button.type = "button";
     button.className = `player-tab${player.id === activeId ? " is-active" : ""}`;
     button.dataset.playerId = player.id;
-    button.textContent = player.name || "Unknown Player";
+    const baseName = player.name || "Unknown Player";
+    button.textContent = player.isSelf ? `${baseName} ☆` : baseName;
     button.addEventListener("click", () => {
       if (player.id === activePlayerId) return;
       switchActivePlayer(player.id);
@@ -222,26 +200,26 @@ const switchActivePlayer = async (playerId) => {
 };
 
 const initObrContext = async () => {
-  const obrLoaded = await ensureObrSdk();
-  if (!obrLoaded || !window.OBR?.onReady) {
+  const obrAvailable = getObrGlobal();
+  if (!obrAvailable?.onReady) {
     showPlayerTabsMessage("OBR SDK not available; player tabs disabled.");
     return false;
   }
+  if (!window.OBR) {
+    window.OBR = obrAvailable;
+  }
   await window.OBR.onReady();
+  if (!window.OBR?.isAvailable) {
+    showPlayerTabsMessage("OBR not available; player tabs disabled.");
+    return false;
+  }
   obrReady = true;
   const self = await getSelfPlayer();
   localPlayerId = self?.id || null;
-  const roleFromSelf = self?.role;
-  const roleFromApi = await window.OBR?.player?.getRole?.();
-  const role = (roleFromSelf || roleFromApi || "").toString().toLowerCase();
-  isDm = role === "gm" || role === "dm" || role === "gamemaster" || role === "game_master";
+  localPlayerName = self?.name || "";
+  const role = await window.OBR?.player?.getRole?.();
+  isDm = role === "GM";
   cachedPlayers = await getAllPlayers(self);
-  if (localPlayerId && !cachedPlayers.some((p) => p.id === localPlayerId)) {
-    cachedPlayers = [self || { id: localPlayerId, name: "GM" }, ...cachedPlayers];
-  }
-  if (isDm && self?.id && !cachedPlayers.some((p) => p.id === self.id)) {
-    cachedPlayers = [self, ...cachedPlayers];
-  }
   activePlayerId = localPlayerId;
 
   const playerTabs = getPlayerTabsContainer();
@@ -252,17 +230,13 @@ const initObrContext = async () => {
       playerTabs.removeAttribute("hidden");
       playerTabs.style.display = "flex";
     } else {
-      showPlayerTabsMessage(`Player tabs are GM-only (role: ${role || "unknown"})`);
+      playerTabs.hidden = true;
     }
   }
 
   if (window.OBR?.party?.onChange) {
     window.OBR.party.onChange((players) => {
       cachedPlayers = players;
-      if (localPlayerId && !cachedPlayers.some((p) => p.id === localPlayerId)) {
-        const self = players.find((p) => p.id === localPlayerId) || { id: localPlayerId, name: "GM" };
-        cachedPlayers = [self, ...cachedPlayers];
-      }
       if (isDm) {
         renderPlayerTabs(cachedPlayers, activePlayerId);
       }
