@@ -81,6 +81,8 @@ const showPlayerTabsMessage = (message) => {
   container.style.display = "flex";
 };
 
+const getObrGlobal = () => window.OBR || globalThis.OBR;
+
 const OBR_SDK_URLS = [
   "https://unpkg.com/@owlbear-rodeo/sdk@1.3.8/dist/OBR.js",
   "https://cdn.jsdelivr.net/npm/@owlbear-rodeo/sdk@1.3.8/dist/OBR.js",
@@ -97,11 +99,19 @@ const loadScript = (src) =>
   });
 
 const ensureObrSdk = async () => {
-  if (window.OBR?.onReady) return true;
+  const existing = getObrGlobal();
+  if (existing?.onReady) {
+    window.OBR = existing;
+    return true;
+  }
   for (const url of OBR_SDK_URLS) {
     try {
       await loadScript(url);
-      if (window.OBR?.onReady) return true;
+      const loaded = getObrGlobal();
+      if (loaded?.onReady) {
+        window.OBR = loaded;
+        return true;
+      }
     } catch (error) {
       console.warn("OBR SDK load failed:", error);
     }
