@@ -1,14 +1,14 @@
 {
   "name": "AFF Star Trek",
-  "version": "0.1.46",
+  "version": "1.0.0",
   "manifest_version": 1,
-  "icon": "https://whalecancer.github.io/obr-aff-star-trek/icon.svg?v=63",
+  "icon": "https://whalecancer.github.io/obr-aff-star-trek/icon.svg?v=64",
   "author": "AFFWiki",
   "description": "AFF Star Trek popover panel for Owlbear Rodeo.",
   "action": {
     "title": "AFF Star Trek",
-    "icon": "https://whalecancer.github.io/obr-aff-star-trek/icon.svg?v=63",
-    "popover": "https://whalecancer.github.io/obr-aff-star-trek/index.html?v=63",
+    "icon": "https://whalecancer.github.io/obr-aff-star-trek/icon.svg?v=64",
+    "popover": "https://whalecancer.github.io/obr-aff-star-trek/index.html?v=64",
     "height": 1200,
     "width": 900
   }
