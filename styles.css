@@ -33,39 +33,53 @@ body {
 }
 
 .player-tabs {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.3rem 0.35rem;
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.05);
-  overflow-x: auto;
-  scrollbar-width: thin;
+  padding: 0;
 }
 
 .player-tabs[hidden] {
   display: none;
 }
 
-.player-tab {
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  background: #2f2f2f;
-  color: #f2f2f2;
-  font-size: 0.8rem;
-  padding: 0.35rem 0.65rem;
-  border-radius: 999px;
+.player-tabs__list {
+  background: rgba(0, 0, 0, 0.25);
+  margin: 0;
+  padding: 0;
+  display: flex;
+  list-style-type: none;
+  overflow-x: auto;
+  scrollbar-width: thin;
+  border-radius: 10px;
+}
+
+.player-tabs__list li {
+  color: rgba(242, 242, 242, 0.55);
+  text-decoration: none;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.player-tabs__list li button {
+  background-color: transparent;
+  border: none;
+  border-radius: 0;
+  font-size: 0.9rem;
+  box-sizing: border-box;
+  display: block;
+  height: 100%;
+  width: 100%;
+  padding: 0.45rem 0.9rem;
+  color: inherit;
   cursor: pointer;
   white-space: nowrap;
-  transition: background 0.2s ease, border-color 0.2s ease;
 }
 
-.player-tab:hover {
+.player-tabs__list li:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(242, 242, 242, 0.85);
+}
+
+.player-tabs__list li.active {
+  color: #f2f2f2;
   background: #3a3a3a;
-}
-
-.player-tab.is-active {
-  background: #4a4a4a;
-  border-color: rgba(255, 255, 255, 0.25);
 }
 
 .tabs {
@@ -139,6 +153,53 @@ body {
 
 .tab-panel.is-active {
   display: block;
+}
+
+.log-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.log-entry {
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  padding: 0.75rem;
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.log-entry__meta {
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.6);
+  margin-bottom: 0.35rem;
+}
+
+.log-entry__summary {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.log-entry--success .log-entry__summary {
+  color: rgba(76, 217, 100, 0.95);
+}
+
+.log-entry--failure .log-entry__summary {
+  color: rgba(255, 69, 58, 0.95);
+}
+
+.log-entry__changes {
+  margin: 0.5rem 0 0;
+  padding-left: 1.15rem;
+  color: rgba(255, 255, 255, 0.75);
+  font-size: 0.85rem;
+}
+
+.log-entry__changes li {
+  margin: 0.2rem 0;
+}
+
+.log-entry__empty {
+  color: rgba(255, 255, 255, 0.6);
+  font-style: italic;
 }
 
 .field-group {
@@ -217,10 +278,28 @@ body {
   color: rgba(255, 255, 255, 0.7);
 }
 
+.custom-roll-field {
+  margin-bottom: 0.5rem;
+}
+
+.attack-roll-input textarea.attack-roll-input {
+  resize: vertical;
+}
+
 .stats-badges {
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
+}
+
+.stat-badge[data-roll-role="stat-roll-badge"],
+.stat-badge[data-roll-role="stat-roll-badge"] * {
+  cursor: pointer;
+}
+
+.skill-badge[data-roll-role="skill-roll-badge"],
+.skill-badge[data-roll-role="skill-roll-badge"] * {
+  cursor: pointer;
 }
 
 .skills-section {
@@ -284,6 +363,49 @@ body {
 
 .skill-picker-card--skills {
   min-width: 480px;
+}
+
+.derived-stat-card {
+  min-width: 320px;
+}
+
+.derived-stat-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.derived-stat-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.6rem;
+}
+
+.derived-stat-button {
+  width: 100%;
+  justify-content: center;
+  font-size: 0.9rem;
+}
+
+.derived-stat-amount-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+.derived-stat-amount-button {
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: #3a3a3a;
+  color: #f2f2f2;
+  border-radius: 8px;
+  padding: 0.5rem 0;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.derived-stat-amount-button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 
 .skill-category-grid {
@@ -365,6 +487,12 @@ body {
   font-weight: 600;
 }
 
+.skill-picker-item-title .skill-picker-item-total {
+  margin-left: auto;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 0.75rem;
+}
+
 .skill-picker-item-title .skill-emoji {
   font-size: 1.4rem;
   line-height: 1;
@@ -409,6 +537,12 @@ body {
   cursor: pointer;
 }
 
+.skill-picker-button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  background: #2a2a2a;
+}
+
 .skills-list {
   display: flex;
   flex-wrap: wrap;
@@ -438,6 +572,196 @@ body {
   flex-direction: column;
   gap: 0.6rem;
 }
+
+.equipment-section {
+  margin-top: 1.25rem;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-rows: auto auto;
+  gap: 0.6rem;
+}
+
+.equipment-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  grid-column: 1 / -1;
+}
+
+.equipment-category-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.equipment-category-badges .skill-category-badge {
+  cursor: pointer;
+  font-size: 1.35rem;
+  line-height: 1;
+}
+
+.equipment-badge {
+  cursor: pointer;
+}
+
+.equipment-section .feature-badge--empty {
+  cursor: default;
+}
+
+.equipment-section .skills-list {
+  justify-content: flex-start;
+  align-items: center;
+}
+
+.weapon-detail {
+  display: grid;
+  gap: 0.6rem;
+}
+
+.weapon-detail__row {
+  display: grid;
+  gap: 0.2rem;
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.weapon-detail__label {
+  font-size: 0.7rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.attack-roll-card {
+  gap: 1rem;
+}
+
+.attack-roll-inputs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.attack-roll-skill {
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.attack-roll-field {
+  display: grid;
+  gap: 0.35rem;
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.65);
+}
+
+.attack-roll-label {
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.attack-roll-input {
+  width: 100%;
+  padding: 0.4rem 0.55rem;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: #3a3a3a;
+  color: #f2f2f2;
+  font-size: 0.95rem;
+}
+
+.attack-roll-visual {
+  display: grid;
+  gap: 0.75rem;
+  justify-items: center;
+  padding: 0.75rem;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.attack-roll-visual.is-success {
+  background: rgba(52, 199, 89, 0.15);
+  border-color: rgba(52, 199, 89, 0.5);
+}
+
+.attack-roll-visual.is-failure {
+  background: rgba(255, 69, 58, 0.15);
+  border-color: rgba(255, 69, 58, 0.5);
+}
+
+.dice-rolls {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.die-face {
+  background: #2a2a2a;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 12px;
+  padding: 0.5rem;
+  display: grid;
+  gap: 0.35rem;
+  align-items: center;
+  justify-items: center;
+  min-width: 72px;
+}
+
+.dice-container {
+  display: grid;
+  grid-template-columns: repeat(3, 12px);
+  grid-template-rows: repeat(3, 12px);
+  gap: 6px;
+  width: max-content;
+}
+
+.pip {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.2);
+  opacity: 0;
+  transition: opacity 0.1s ease;
+}
+
+.pip.is-visible {
+  opacity: 1;
+  background: #f2f2f2;
+}
+
+.die-label {
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.dice-total {
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.modifier {
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.attack-roll-result {
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.8);
+  text-align: center;
+}
+
+.attack-roll-damage {
+  display: grid;
+  gap: 0.5rem;
+  justify-items: center;
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.attack-roll-damage-result {
+  font-weight: 600;
+}
+
 
 .features-header {
   display: flex;

@@ -5,6 +5,8 @@ const tabPanels = Array.from(document.querySelectorAll(".tab-panel"));
 const newButton = document.querySelector('[data-action="new"]');
 const getGradeSelects = () =>
   Array.from(document.querySelectorAll('[data-role="grade-select"]'));
+const getNameInputs = () =>
+  Array.from(document.querySelectorAll('[data-role="name-input"]'));
 const getBackgroundSelects = () =>
   Array.from(document.querySelectorAll('[data-role="background-select"]'));
 const getStatsBadges = () =>
@@ -53,9 +55,40 @@ let purchasedFeatures = new Set(); // Features purchased with feature points (se
 let backgroundFeatures = [];
 let featureSelections = new Map(); // Store selections for features that require them (e.g., Hunter enemy type)
 let featuresMap = new Map(); // Map of feature ID -> feature definition
-let currentBackgroundName = "";
+let characterName = "";
+let equippedWeapons = [];
+let equippedArmor = [];
+let equippedGeneral = [];
+const HYPO_SPRAY_MAX_CHARGES = 6;
+let hyposprayCharges = HYPO_SPRAY_MAX_CHARGES;
+let attackRollState = {
+  isRolling: false,
+  die1: null,
+  die2: null,
+  animationTimer: null,
+  hasUsedLuckTest: false,
+  lastAttackSuccess: null,
+  isLuckTesting: false,
+};
+let statRollState = {
+  isRolling: false,
+  die1: null,
+  die2: null,
+  animationTimer: null,
+  hasUsedLuckTest: false,
+  lastRollSuccess: null,
+  isLuckTesting: false,
+};
+let diceRollAudio = null;
+let successAudio = null;
+let failureAudio = null;
 const PLAYER_TABS_SELECTOR = '[data-role="player-tabs"]';
-const METADATA_KEY = "affStarTrek.characters";
+const PLAYER_METADATA_KEY = "affStarTrek.playerCharacter";
+const LOCAL_STORAGE_KEY_PREFIX = "affStarTrek.playerBackup";
+const LOCAL_STORAGE_NAME_KEY_PREFIX = "affStarTrek.playerBackupName";
+const LOG_STORAGE_KEY_PREFIX = "affStarTrek.changeLog";
+const LOG_MAX_ENTRIES = 200;
+const LOG_MAX_CHANGES_PER_ENTRY = 12;
 const PERSIST_DEBOUNCE_MS = 400;
 let obrReady = false;
 let isDm = false;
@@ -66,12 +99,16 @@ let cachedPlayers = [];
 let persistenceReady = false;
 let isApplyingRemote = false;
 let persistTimer = null;
+let activeRoomId = null;
+let lastSavedSnapshot = null;
 const statBadgeMaps = new Map();
 const statState = new Map();
 const activePanelKey = () =>
   panel?.dataset.activeTab || "sheet";
 const getPlayerTabsContainer = () =>
   document.querySelector(PLAYER_TABS_SELECTOR);
+const getEquipmentLists = () =>
+  Array.from(document.querySelectorAll('[data-role="equipment-list"]'));
 
 const showPlayerTabsMessage = (message) => {
   const container = getPlayerTabsContainer();
@@ -84,14 +121,462 @@ const showPlayerTabsMessage = (message) => {
 
 const getObrGlobal = () => window.OBR || globalThis.OBR;
 
-const getCharactersFromMetadata = (metadata) => {
-  const raw = metadata?.[METADATA_KEY];
-  if (!raw || typeof raw !== "object") return {};
-  return raw;
+const getLocalStorageKey = (playerId, playerName) => {
+  const idPart = playerId || "no-id";
+  const roomPart = activeRoomId || "no-room";
+  const safeName = (playerName || "unknown")
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, "-");
+  return `${LOCAL_STORAGE_KEY_PREFIX}.${roomPart}.${idPart}.${safeName}`;
+};
+
+const getLocalStorageNameKey = (playerName) => {
+  const roomPart = activeRoomId || "no-room";
+  const safeName = (playerName || "unknown")
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, "-");
+  return `${LOCAL_STORAGE_NAME_KEY_PREFIX}.${roomPart}.${safeName}`;
+};
+
+const getLogStorageKey = () => {
+  const roomPart = activeRoomId || "no-room";
+  return `${LOG_STORAGE_KEY_PREFIX}.${roomPart}`;
+};
+
+const cloneCharacterData = (characterData) => {
+  try {
+    return JSON.parse(JSON.stringify(characterData));
+  } catch (error) {
+    console.warn("Failed to clone character data:", error);
+    return null;
+  }
+};
+
+const serializeValue = (value) => {
+  if (value === undefined) return "(undefined)";
+  if (value === null) return "(null)";
+  try {
+    return JSON.stringify(value);
+  } catch (error) {
+    return String(value);
+  }
+};
+
+const truncateValue = (text, maxLength = 80) => {
+  if (text.length <= maxLength) return text;
+  return `${text.slice(0, maxLength - 3)}...`;
+};
+
+const formatSkillRanks = (value) => {
+  if (!Array.isArray(value)) return "";
+  return value
+    .map(([skillId, rank]) => `${skillId}: ${rank}`)
+    .join(", ");
+};
+
+const formatFeatureSelections = (value) => {
+  if (!Array.isArray(value)) return "";
+  return value
+    .map(([featureId, selection]) => {
+      const featureName = featuresMap.get(featureId)?.name || featureId;
+      return `${featureName}: ${selection}`;
+    })
+    .join(", ");
+};
+
+const formatIdList = (value, lookupMap) => {
+  if (!Array.isArray(value)) return "";
+  return value
+    .map((entry) => lookupMap?.get(entry)?.name || entry)
+    .join(", ");
+};
+
+const getEquipmentItemById = (itemId) => {
+  if (!itemId) return null;
+  return (
+    equipmentCatalog.Weapons.find((item) => item.id === itemId) ||
+    equipmentCatalog.General.find((item) => item.id === itemId) ||
+    equipmentCatalog.Armor.find((item) => item.id === itemId) ||
+    null
+  );
+};
+
+const formatEquipmentList = (value) => {
+  if (!Array.isArray(value)) return "";
+  return value
+    .map((entry) => getEquipmentItemById(entry)?.name || entry)
+    .join(", ");
+};
+
+const getSkillName = (skillId) => {
+  const match = skills.find((skill) => skill?.name === skillId);
+  return match?.name || skillId;
+};
+
+const getFeatureName = (featureId) => featuresMap.get(featureId)?.name || featureId;
+
+const formatValueForField = (field, value) => {
+  switch (field) {
+    case "characterName":
+      return value || "(none)";
+    case "grade":
+    case "background":
+      return value || "(none)";
+    case "skillRanks":
+      return formatSkillRanks(value);
+    case "purchasedSkills":
+      return formatIdList(value);
+    case "purchasedFeatures":
+      return formatIdList(value, featuresMap);
+    case "featureSelections":
+      return formatFeatureSelections(value);
+    case "equippedWeapons":
+    case "equippedGeneral":
+    case "equippedArmor":
+      return formatEquipmentList(value);
+    default:
+      return truncateValue(serializeValue(value));
+  }
+};
+
+const buildStatChanges = (label, prevValue, nextValue) => {
+  const prevObj = prevValue && typeof prevValue === "object" ? prevValue : {};
+  const nextObj = nextValue && typeof nextValue === "object" ? nextValue : {};
+  const keys = new Set([...Object.keys(prevObj), ...Object.keys(nextObj)]);
+  const changes = [];
+  keys.forEach((key) => {
+    const prev = prevObj[key];
+    const next = nextObj[key];
+    try {
+      if (JSON.stringify(prev) !== JSON.stringify(next)) {
+        changes.push({
+          field: label,
+          subField: key,
+          from: formatValueForField(label, prev),
+          to: formatValueForField(label, next),
+        });
+      }
+    } catch (error) {
+      changes.push({
+        field: label,
+        subField: key,
+        from: formatValueForField(label, prev),
+        to: formatValueForField(label, next),
+      });
+    }
+  });
+  return changes;
+};
+
+const buildStatStateChanges = (prevValue, nextValue) => {
+  const prevMap = new Map(Array.isArray(prevValue) ? prevValue : []);
+  const nextMap = new Map(Array.isArray(nextValue) ? nextValue : []);
+  const keys = new Set([...prevMap.keys(), ...nextMap.keys()]);
+  const changes = [];
+  keys.forEach((key) => {
+    const prev = prevMap.get(key);
+    const next = nextMap.get(key);
+    const prevCurrent = prev?.current ?? "(unset)";
+    const nextCurrent = next?.current ?? "(unset)";
+    if (prevCurrent !== nextCurrent) {
+      changes.push({
+        field: "statState",
+        subField: key,
+        from: truncateValue(String(prevCurrent)),
+        to: truncateValue(String(nextCurrent)),
+      });
+    }
+  });
+  return changes;
+};
+
+const buildSkillRankChanges = (prevValue, nextValue) => {
+  const prevMap = new Map(Array.isArray(prevValue) ? prevValue : []);
+  const nextMap = new Map(Array.isArray(nextValue) ? nextValue : []);
+  const keys = new Set([...prevMap.keys(), ...nextMap.keys()]);
+  const changes = [];
+  keys.forEach((skillId) => {
+    const prevRank = prevMap.get(skillId) ?? 0;
+    const nextRank = nextMap.get(skillId) ?? 0;
+    if (prevRank !== nextRank) {
+      changes.push({
+        field: "skillRanks",
+        subField: getSkillName(skillId),
+        from: String(prevRank),
+        to: String(nextRank),
+      });
+    }
+  });
+  return changes;
+};
+
+const buildListChanges = (field, prevValue, nextValue, nameResolver) => {
+  const prevSet = new Set(Array.isArray(prevValue) ? prevValue : []);
+  const nextSet = new Set(Array.isArray(nextValue) ? nextValue : []);
+  const changes = [];
+  prevSet.forEach((entry) => {
+    if (!nextSet.has(entry)) {
+      const name = nameResolver ? nameResolver(entry) : entry;
+      changes.push({
+        field,
+        subField: name,
+        from: "added",
+        to: "removed",
+      });
+    }
+  });
+  nextSet.forEach((entry) => {
+    if (!prevSet.has(entry)) {
+      const name = nameResolver ? nameResolver(entry) : entry;
+      changes.push({
+        field,
+        subField: name,
+        from: "removed",
+        to: "added",
+      });
+    }
+  });
+  return changes;
+};
+
+const buildFeatureSelectionChanges = (prevValue, nextValue) => {
+  const prevMap = new Map(Array.isArray(prevValue) ? prevValue : []);
+  const nextMap = new Map(Array.isArray(nextValue) ? nextValue : []);
+  const keys = new Set([...prevMap.keys(), ...nextMap.keys()]);
+  const changes = [];
+  keys.forEach((featureId) => {
+    const prevSelection = prevMap.get(featureId);
+    const nextSelection = nextMap.get(featureId);
+    if (prevSelection !== nextSelection) {
+      changes.push({
+        field: "featureSelections",
+        subField: getFeatureName(featureId),
+        from: prevSelection ?? "(none)",
+        to: nextSelection ?? "(none)",
+      });
+    }
+  });
+  return changes;
+};
+
+const getFieldLabel = (field) => {
+  const labels = {
+    grade: "Grade",
+    background: "Background",
+    baseCharacteristics: "Base stats",
+    currentStatModifiers: "Stat modifiers",
+    skillRanks: "Skill ranks",
+    purchasedSkills: "Purchased skills",
+    purchasedFeatures: "Purchased features",
+    featureSelections: "Feature selections",
+    statState: "Stat state",
+    equippedWeapons: "Weapons",
+    equippedGeneral: "General equipment",
+    equippedArmor: "Armor",
+    characterName: "Name",
+    version: "Version",
+  };
+  return labels[field] || field;
+};
+
+const getChangeDetails = (previousData, nextData) => {
+  const previousKeys = previousData ? Object.keys(previousData) : [];
+  const nextKeys = nextData ? Object.keys(nextData) : [];
+  const keys = new Set([...previousKeys, ...nextKeys]);
+  const changes = [];
+  keys.forEach((key) => {
+    const prevValue = previousData ? previousData[key] : undefined;
+    const nextValue = nextData ? nextData[key] : undefined;
+    if (key === "baseCharacteristics" || key === "currentStatModifiers") {
+      changes.push(...buildStatChanges(key, prevValue, nextValue));
+      return;
+    }
+    if (key === "statState") {
+      changes.push(...buildStatStateChanges(prevValue, nextValue));
+      return;
+    }
+    if (key === "skillRanks") {
+      changes.push(...buildSkillRankChanges(prevValue, nextValue));
+      return;
+    }
+    if (key === "purchasedSkills") {
+      changes.push(...buildListChanges(key, prevValue, nextValue, getSkillName));
+      return;
+    }
+    if (key === "purchasedFeatures") {
+      changes.push(...buildListChanges(key, prevValue, nextValue, getFeatureName));
+      return;
+    }
+    if (key === "featureSelections") {
+      changes.push(...buildFeatureSelectionChanges(prevValue, nextValue));
+      return;
+    }
+    try {
+      if (JSON.stringify(prevValue) !== JSON.stringify(nextValue)) {
+        changes.push({
+          field: key,
+          from: formatValueForField(key, prevValue),
+          to: formatValueForField(key, nextValue),
+        });
+      }
+    } catch (error) {
+      changes.push({
+        field: key,
+        from: formatValueForField(key, prevValue),
+        to: formatValueForField(key, nextValue),
+      });
+    }
+  });
+  if (!previousData && changes.length) {
+    return changes.map((change) => ({
+      ...change,
+      from: "(none)",
+    }));
+  }
+  return changes;
+};
+
+const formatChangeSummary = (changes) => {
+  if (!changes || !changes.length) return "";
+  const fields = changes.map((change) => getFieldLabel(change.field));
+  const preview = fields.slice(0, 5).join(", ");
+  if (fields.length > 5) {
+    return `Changed: ${preview} +${fields.length - 5} more`;
+  }
+  return `Changed: ${preview}`;
+};
+
+const readChangeLogEntries = () => {
+  try {
+    const raw = localStorage.getItem(getLogStorageKey());
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (error) {
+    console.warn("Failed to read change log:", error);
+    return [];
+  }
+};
+
+const writeChangeLogEntries = (entries) => {
+  try {
+    localStorage.setItem(getLogStorageKey(), JSON.stringify(entries));
+  } catch (error) {
+    console.warn("Failed to write change log:", error);
+  }
+};
+
+const renderChangeLog = () => {
+  const container = document.querySelector('[data-role="log-list"]');
+  if (!container) return;
+  const entries = readChangeLogEntries();
+  container.innerHTML = "";
+  if (!entries.length) {
+    const empty = document.createElement("div");
+    empty.className = "log-entry__empty";
+    empty.textContent = "No changes logged yet.";
+    container.appendChild(empty);
+    return;
+  }
+  entries.forEach((entry) => {
+    const wrapper = document.createElement("div");
+    wrapper.className = "log-entry";
+    const summaryText = entry?.summary || "";
+    if (/\bFAILURE\b/i.test(summaryText)) {
+      wrapper.classList.add("log-entry--failure");
+    } else if (/\bSUCCESS\b/i.test(summaryText)) {
+      wrapper.classList.add("log-entry--success");
+    }
+
+    const meta = document.createElement("div");
+    meta.className = "log-entry__meta";
+    const timestamp = entry?.timestamp ? new Date(entry.timestamp).toLocaleString() : "Unknown time";
+    const playerLabel = entry?.playerName || entry?.playerId || "Unknown player";
+    const characterLabel = entry?.characterName ? entry.characterName : "";
+    meta.textContent = characterLabel
+      ? `${timestamp} • ${characterLabel} • ${playerLabel}`
+      : `${timestamp} • ${playerLabel}`;
+
+    const summary = document.createElement("div");
+    summary.className = "log-entry__summary";
+    summary.textContent = entry?.summary || "Updated character.";
+
+    wrapper.appendChild(meta);
+    wrapper.appendChild(summary);
+
+    if (Array.isArray(entry?.changes) && entry.changes.length) {
+      const list = document.createElement("ul");
+      list.className = "log-entry__changes";
+      const trimmed = entry.changes.slice(0, LOG_MAX_CHANGES_PER_ENTRY);
+      trimmed.forEach((change) => {
+        const item = document.createElement("li");
+        const label = change.subField
+          ? `${getFieldLabel(change.field)} (${change.subField})`
+          : getFieldLabel(change.field);
+        item.textContent = `${label}: ${change.from} -> ${change.to}`;
+        list.appendChild(item);
+      });
+      if (entry.changes.length > LOG_MAX_CHANGES_PER_ENTRY) {
+        const more = document.createElement("li");
+        more.textContent = `... and ${entry.changes.length - LOG_MAX_CHANGES_PER_ENTRY} more`;
+        list.appendChild(more);
+      }
+      wrapper.appendChild(list);
+    }
+
+    container.appendChild(wrapper);
+  });
+};
+
+const appendChangeLogEntry = (summary, changes) => {
+  if (!summary && (!changes || !changes.length)) return;
+  const entries = readChangeLogEntries();
+  const entry = {
+    timestamp: new Date().toISOString(),
+    playerId: localPlayerId || "unknown",
+    playerName: localPlayerName || "Unknown Player",
+    characterName: characterName || "",
+    summary,
+    changes,
+  };
+  const nextEntries = [entry, ...entries].slice(0, LOG_MAX_ENTRIES);
+  writeChangeLogEntries(nextEntries);
+  if (panel?.dataset?.activeTab === "log") {
+    renderChangeLog();
+  }
+};
+
+const getCharacterDataSize = (characterData) => {
+  try {
+    return new TextEncoder().encode(JSON.stringify(characterData)).length;
+  } catch (error) {
+    console.warn("Failed to calculate character data size:", error);
+    return null;
+  }
+};
+
+const logCharacterDataSizeBreakdown = (characterData) => {
+  if (!characterData || typeof characterData !== "object") return;
+  const sizes = {};
+  Object.keys(characterData).forEach((key) => {
+    try {
+      const value = characterData[key];
+      sizes[key] = new TextEncoder().encode(JSON.stringify(value)).length;
+    } catch (error) {
+      sizes[key] = null;
+    }
+  });
+  console.info("Character payload size breakdown (bytes):", sizes);
 };
 
 const schedulePersist = () => {
   if (!persistenceReady || isApplyingRemote || !obrReady || !activePlayerId) return;
+  if (!window.OBR?.player?.setMetadata) {
+    console.warn("Player metadata unavailable; skipping persistence.");
+    return;
+  }
   if (persistTimer) {
     window.clearTimeout(persistTimer);
   }
@@ -104,18 +589,50 @@ const schedulePersist = () => {
 };
 
 const persistCharacter = async () => {
-  if (!obrReady || !activePlayerId || !window.OBR?.room?.getMetadata) return;
+  if (!obrReady || !activePlayerId) {
+    console.warn("OBR not ready; cannot persist.");
+    return;
+  }
   const characterData = buildCharacterData();
-  const metadata = await window.OBR.room.getMetadata();
-  const characters = getCharactersFromMetadata(metadata);
-  const next = {
-    ...characters,
-    [activePlayerId]: characterData,
-  };
-  await window.OBR.room.setMetadata({
-    ...metadata,
-    [METADATA_KEY]: next,
-  });
+  const size = getCharacterDataSize(characterData);
+  if (size) {
+    console.info(`Character payload size: ${size} bytes.`);
+  }
+  logCharacterDataSizeBreakdown(characterData);
+  if (size && size > 14000) {
+    console.warn(`Character payload is ${size} bytes; may exceed metadata limit.`);
+  }
+
+  const changes = getChangeDetails(lastSavedSnapshot, characterData);
+  const summary = formatChangeSummary(changes);
+  if (changes.length) {
+    appendChangeLogEntry(summary, changes);
+  }
+
+  // Save only to the current player's metadata
+  if (window.OBR?.player?.setMetadata) {
+    try {
+      await window.OBR.player.setMetadata({ [PLAYER_METADATA_KEY]: characterData });
+      console.debug("Saved character to player metadata.");
+    } catch (error) {
+      console.error("Failed to persist to player metadata:", error);
+    }
+  }
+
+  try {
+    if (localPlayerId) {
+      const storageKey = getLocalStorageKey(localPlayerId, localPlayerName);
+      localStorage.setItem(storageKey, JSON.stringify(characterData));
+    }
+    if (localPlayerName) {
+      const nameKey = getLocalStorageNameKey(localPlayerName);
+      localStorage.setItem(nameKey, JSON.stringify(characterData));
+    }
+  } catch (error) {
+    console.warn("Failed to persist to local storage backup:", error);
+  }
+
+  lastSavedSnapshot = cloneCharacterData(characterData);
 };
 
 const getSelfPlayer = async () => {
@@ -139,6 +656,10 @@ const renderPlayerTabs = (players, activeId) => {
   const container = getPlayerTabsContainer();
   if (!container) return;
   container.innerHTML = "";
+
+  const list = document.createElement("ul");
+  list.className = "player-tabs__list";
+
   const orderedPlayers = [];
   if (localPlayerId) {
     orderedPlayers.push({
@@ -151,10 +672,16 @@ const renderPlayerTabs = (players, activeId) => {
     if (!player?.id || player.id === localPlayerId) return;
     orderedPlayers.push({ ...player, isSelf: false });
   });
+
   orderedPlayers.forEach((player) => {
+    const item = document.createElement("li");
+    item.className = player.id === activeId ? "active" : "";
+    if (!player.isSelf) {
+      item.setAttribute("role", "tab");
+    }
+
     const button = document.createElement("button");
     button.type = "button";
-    button.className = `player-tab${player.id === activeId ? " is-active" : ""}`;
     button.dataset.playerId = player.id;
     const baseName = player.name || "Unknown Player";
     button.textContent = player.isSelf ? `${baseName} ☆` : baseName;
@@ -162,22 +689,85 @@ const renderPlayerTabs = (players, activeId) => {
       if (player.id === activePlayerId) return;
       switchActivePlayer(player.id);
     });
-    container.appendChild(button);
+
+    item.appendChild(button);
+    list.appendChild(item);
   });
+
+  container.appendChild(list);
 };
 
 const loadCharacterForPlayer = async (playerId) => {
-  if (!obrReady || !playerId || !window.OBR?.room?.getMetadata) return false;
-  const metadata = await window.OBR.room.getMetadata();
-  const characters = getCharactersFromMetadata(metadata);
-  const data = characters[playerId];
+  if (!obrReady || !playerId) {
+    console.warn("OBR not ready; cannot load character.");
+    return false;
+  }
   isApplyingRemote = true;
   try {
+    let data = null;
+    let source = "none";
+
+    if (playerId === localPlayerId && window.OBR?.player?.getMetadata) {
+      const metadata = await window.OBR.player.getMetadata();
+      data = metadata?.[PLAYER_METADATA_KEY];
+      if (data) {
+        source = "player-metadata";
+        console.debug("Loaded character from player metadata.");
+      }
+    }
+
+    if (!data && playerId === localPlayerId) {
+      try {
+        const storageKey = getLocalStorageKey(localPlayerId, localPlayerName);
+        const raw = localStorage.getItem(storageKey);
+        if (raw) {
+          data = JSON.parse(raw);
+          source = "local-storage";
+        }
+      } catch (error) {
+        console.warn("Failed to read local storage backup:", error);
+      }
+    }
+
+    if (!data && playerId === localPlayerId && localPlayerName) {
+      try {
+        const nameKey = getLocalStorageNameKey(localPlayerName);
+        const raw = localStorage.getItem(nameKey);
+        if (raw) {
+          data = JSON.parse(raw);
+          source = "local-storage";
+        }
+      } catch (error) {
+        console.warn("Failed to read local storage name backup:", error);
+      }
+    }
+
+    if (!data && playerId !== localPlayerId) {
+      console.warn("Per-player mode: ignoring other player data.");
+    }
+
     if (data) {
+      console.info(`Applying character data for ${playerId} from ${source}.`);
       await applyCharacterData(data);
+      lastSavedSnapshot = cloneCharacterData(data);
+      if (source === "local-storage" && window.OBR?.player?.setMetadata) {
+        try {
+          await window.OBR.player.setMetadata({ [PLAYER_METADATA_KEY]: data });
+          console.debug("Synced local storage data to player metadata.");
+        } catch (error) {
+          console.warn("Failed to sync local storage to player metadata:", error);
+        }
+      }
       return true;
     }
-    resetCharacter();
+    console.warn(`No saved data found for ${playerId}; leaving defaults.`);
+    resetCharacter(true);
+    lastSavedSnapshot = null;
+    return false;
+  } catch (error) {
+    console.error("Failed to load character data:", error);
+    resetCharacter(true);
+    lastSavedSnapshot = null;
     return false;
   } finally {
     isApplyingRemote = false;
@@ -193,9 +783,6 @@ const switchActivePlayer = async (playerId) => {
     await persistCharacter();
   }
   activePlayerId = playerId;
-  if (isDm) {
-    renderPlayerTabs(cachedPlayers, activePlayerId);
-  }
   await loadCharacterForPlayer(activePlayerId);
 };
 
@@ -208,7 +795,9 @@ const initObrContext = async () => {
   if (!window.OBR) {
     window.OBR = obrAvailable;
   }
-  await window.OBR.onReady();
+  await new Promise((resolve) => {
+    window.OBR.onReady(() => resolve(true));
+  });
   if (!window.OBR?.isAvailable) {
     showPlayerTabsMessage("OBR not available; player tabs disabled.");
     return false;
@@ -217,34 +806,25 @@ const initObrContext = async () => {
   const self = await getSelfPlayer();
   localPlayerId = self?.id || null;
   localPlayerName = self?.name || "";
-  const role = await window.OBR?.player?.getRole?.();
-  isDm = role === "GM";
+  activeRoomId = await window.OBR?.room?.getId?.();
+  isDm = false;
   cachedPlayers = await getAllPlayers(self);
   activePlayerId = localPlayerId;
+  persistenceReady = true;
+  console.info("Extension ready. Active player:", activePlayerId);
 
   const playerTabs = getPlayerTabsContainer();
   if (playerTabs) {
-    if (isDm) {
-      renderPlayerTabs(cachedPlayers, activePlayerId);
-      playerTabs.hidden = false;
-      playerTabs.removeAttribute("hidden");
-      playerTabs.style.display = "flex";
-    } else {
-      playerTabs.hidden = true;
-    }
+    playerTabs.hidden = true;
   }
 
   if (window.OBR?.party?.onChange) {
     window.OBR.party.onChange((players) => {
       cachedPlayers = players;
-      if (isDm) {
-        renderPlayerTabs(cachedPlayers, activePlayerId);
-      }
     });
   }
 
   const loaded = await loadCharacterForPlayer(activePlayerId);
-  persistenceReady = true;
   return loaded;
 };
 const skillCategoryEmojis = {
@@ -257,6 +837,12 @@ const skillCategoryEmojis = {
   Psionic: "🔮",
   Pilot: "✈️",
   Language: "🗣️",
+};
+
+const equipmentCatalog = {
+  Weapons: [],
+  General: [],
+  Armor: [],
 };
 
 // Category order: Combat, Psionic, Movement, Pilot, Stealth, Knowledge, Science, Language
@@ -310,6 +896,9 @@ const updateTabInteractivity = () => {
   });
   getBackgroundSelects().forEach((select) => {
     select.disabled = !backgroundEnabled;
+  });
+  getNameInputs().forEach((input) => {
+    input.disabled = !backgroundEnabled;
   });
   // Stat points are now in the header, no need to hide/show badges
   // + SKILL button removed
@@ -365,10 +954,14 @@ window.addEventListener("load", async () => {
   await loadStatsBadges();
   await loadFeatures();
   await loadSkills();
+  await loadWeapons();
+  await loadGeneralEquipment();
+  await loadArmor();
   await loadSkillPoints();
   await loadGradeOptions();
   await loadBackgroundOptions();
   attachBackgroundListeners();
+  attachNameListeners();
   attachGradeListeners();
   const loadedFromMetadata = await initObrContext();
   if (!loadedFromMetadata) {
@@ -380,6 +973,25 @@ window.addEventListener("load", async () => {
   }
   updateTabInteractivity();
   updateStatPointsBadges();
+  updateEncumbranceDisplay();
+  const bodyActionPenalty = getBodyActionPenalty();
+  renderEquipment();
+
+  const equipmentCategoryButtons = Array.from(
+    document.querySelectorAll('[data-role="equipment-category"]')
+  );
+  console.debug("[Equipment] Found badges:", equipmentCategoryButtons.length);
+  equipmentCategoryButtons.forEach((button) => {
+    button.style.pointerEvents = "auto";
+    button.addEventListener("click", (event) => {
+      event.stopPropagation();
+      event.preventDefault();
+      const section = getActiveEquipmentSection();
+      const category = button.dataset.category;
+      console.debug("[Equipment] Badge clicked:", { category, hasSection: !!section });
+      openEquipmentPicker(section, category);
+    }, true);
+  });
   
   // Update tabButtons now that DOM is ready
   tabButtons = Array.from(document.querySelectorAll(".tab-button"));
@@ -867,17 +1479,103 @@ const loadSkills = async () => {
     const response = await fetch("./data/skills.ts", { cache: "no-store" });
     const text = await response.text();
     const matches = Array.from(
-      text.matchAll(/\{\s*name:\s*"([^"]+)",\s*category:\s*"([^"]+)"(?:,[^\n]*?emoji:\s*"([^"]+)")?/g)
+      text.matchAll(/\{\s*name:\s*"([^"]+)",\s*category:\s*"([^"]+)"[^}]*\}/g)
     );
-    skills = matches.map((match) => ({
-      name: match[1],
-      category: match[2],
-      emoji: match[3] || "",
-    }));
+    skills = matches.map((match) => {
+      const block = match[0];
+      const emojiMatch = block.match(/emoji:\s*"([^"]+)"/);
+      const descMatch = block.match(/description:\s*"([^"]+)"/);
+      return {
+        name: match[1],
+        category: match[2],
+        emoji: emojiMatch ? emojiMatch[1] : "",
+        description: descMatch ? descMatch[1] : "",
+      };
+    });
     populateSkillPickers();
     renderSkills();
   } catch (error) {
     skills = [];
+  }
+};
+
+const loadWeapons = async () => {
+  try {
+    const response = await fetch("./data/weapons.json", { cache: "no-store" });
+    if (!response.ok) {
+      throw new Error(`Failed to load weapons: ${response.status}`);
+    }
+    const data = await response.json();
+    if (Array.isArray(data?.weapons)) {
+      equipmentCatalog.Weapons = data.weapons.map((weapon) => ({
+        id: weapon.id,
+        name: weapon.name,
+        emoji: weapon.emoji,
+        description: weapon.description,
+        damageTrack: weapon.damageTrack,
+        skill: weapon.skill,
+        attackType: weapon.attackType,
+        range: weapon.range,
+      }));
+    }
+  } catch (error) {
+    console.error("Error loading weapons:", error);
+    equipmentCatalog.Weapons = [
+      { id: "phaser-i", name: "Phaser I", emoji: "🔫", description: "Not specified", damageTrack: "3/3/4/4/5/5/6", skill: "Ranged - Light", attackType: "ranged", range: "Very short" },
+      { id: "phaser-ii", name: "Phaser II", emoji: "🔫", description: "Not specified", damageTrack: "4/5/5/5/5/6/7", skill: "Ranged - Light", attackType: "ranged", range: "Short" },
+      { id: "phaser-rifle", name: "Phaser Rifle", emoji: "🔫", description: "Not specified", damageTrack: "4/5/5/5/6/7/8", skill: "Ranged - Light", attackType: "ranged", range: "Long" },
+    ];
+  }
+};
+
+const loadGeneralEquipment = async () => {
+  try {
+    const response = await fetch("./data/equipment.json", { cache: "no-store" });
+    if (!response.ok) {
+      throw new Error(`Failed to load equipment: ${response.status}`);
+    }
+    const data = await response.json();
+    if (Array.isArray(data?.general)) {
+      equipmentCatalog.General = data.general.map((item) => ({
+        id: item.id,
+        name: item.name,
+        emoji: item.emoji,
+        description: item.description,
+      }));
+    }
+  } catch (error) {
+    console.error("Error loading equipment:", error);
+    equipmentCatalog.General = [
+      { id: "hypospray", name: "Hypospray", emoji: "💉", description: "Portable medical injector for quick treatment." },
+      { id: "tricorder", name: "Tricorder", emoji: "📟", description: "Handheld scanner for diagnostics and analysis." },
+    ];
+  }
+};
+
+const loadArmor = async () => {
+  try {
+    const response = await fetch("./data/armor.json", { cache: "no-store" });
+    if (!response.ok) {
+      throw new Error(`Failed to load armor: ${response.status}`);
+    }
+    const data = await response.json();
+    if (Array.isArray(data?.armor)) {
+      equipmentCatalog.Armor = data.armor.map((item) => ({
+        id: item.id,
+        name: item.name,
+        emoji: item.emoji,
+        description: item.description,
+        requiresArmorRank: item.requiresArmorRank ?? 0,
+        bodyPenalty: item.bodyPenalty ?? 0,
+      }));
+    }
+  } catch (error) {
+    console.error("Error loading armor:", error);
+    equipmentCatalog.Armor = [
+      { id: "starfleet-uniform", name: "Starfleet Uniform", emoji: "🧥", description: "Standard Starfleet duty uniform.", requiresArmorRank: 0, bodyPenalty: 0 },
+      { id: "starfleet-skant", name: "Starfleet Skant", emoji: "🧥", description: "Skant uniform variant worn by Starfleet personnel.", requiresArmorRank: 0, bodyPenalty: 0 },
+      { id: "environmental-suit", name: "Environmental Suit", emoji: "🧑‍🚀", description: "Environmental protection suit for hazardous conditions.", requiresArmorRank: 1, bodyPenalty: -1 },
+    ];
   }
 };
 
@@ -1025,6 +1723,43 @@ const getSkillsAtOrAboveRank = (rank) => {
   return count;
 };
 
+const getSkillRankCounts = (ranksMap = skillRanks) => {
+  let maxRank = 0;
+  ranksMap.forEach((value) => {
+    if (value > maxRank) maxRank = value;
+  });
+  const counts = new Map();
+  for (let rank = 1; rank <= maxRank; rank += 1) {
+    let count = 0;
+    ranksMap.forEach((value) => {
+      if (value >= rank) count += 1;
+    });
+    counts.set(rank, count);
+  }
+  return counts;
+};
+
+const isSkillPyramidValid = (ranksMap = skillRanks) => {
+  const counts = getSkillRankCounts(ranksMap);
+  for (let rank = 2; rank <= counts.size; rank += 1) {
+    const higherCount = counts.get(rank) || 0;
+    const lowerCount = counts.get(rank - 1) || 0;
+    if (lowerCount < higherCount * 2) {
+      return false;
+    }
+  }
+  return true;
+};
+
+const getPyramidRequirementMessage = (ranksMap, targetRank) => {
+  const counts = getSkillRankCounts(ranksMap);
+  const higherCount = counts.get(targetRank) || 0;
+  const lowerCount = counts.get(targetRank - 1) || 0;
+  const needed = higherCount * 2;
+  if (lowerCount >= needed) return "";
+  return `Need ${needed} skills at rank ${targetRank - 1} for ${higherCount} skills at rank ${targetRank}`;
+};
+
 const canIncreaseSkill = (name, currentRank) => {
   const currentGrade = getGradeSelects()[0]?.value || "Uncommon";
   const maxRank = maxSkillRanksByGrade[currentGrade] ?? 0;
@@ -1039,16 +1774,11 @@ const canIncreaseSkill = (name, currentRank) => {
   if (remainingPoints < cost) {
     return { allowed: false, reason: "Not enough skill points", cost };
   }
-  if (targetRank > 1) {
-    const requiredRank = targetRank - 1;
-    const count = getSkillsAtOrAboveRank(requiredRank);
-    if (count < 2) {
-      return {
-        allowed: false,
-        reason: `Need two rank ${requiredRank} skills first`,
-        cost,
-      };
-    }
+  const nextRanks = new Map(skillRanks);
+  nextRanks.set(name, targetRank);
+  if (!isSkillPyramidValid(nextRanks)) {
+    const reason = getPyramidRequirementMessage(nextRanks, targetRank) || "Skill pyramid requirement not met";
+    return { allowed: false, reason, cost };
   }
   return { allowed: true, reason: `Cost to increase: ${cost}`, cost };
 };
@@ -1071,6 +1801,23 @@ const getFeatureSpentPoints = () => {
     }
   });
   return total;
+};
+
+const getXpCurrent = () => {
+  const entry = statState.get("XP");
+  if (!entry) return 0;
+  return entry.current ?? entry.initial ?? 0;
+};
+
+const setXpCurrent = (value) => {
+  const entry = statState.get("XP") || { initial: 0, current: 0 };
+  const nextCurrent = Math.max(0, value);
+  statState.set("XP", { ...entry, current: nextCurrent });
+  document.querySelectorAll('[data-role="stat-xp"]').forEach((badge) => {
+    const valueEl = badge.querySelector(".stat-value");
+    if (valueEl) valueEl.textContent = String(nextCurrent);
+  });
+  schedulePersist();
 };
 
 const updateFeaturePointsBadge = () => {
@@ -1117,6 +1864,24 @@ const getAllOwnedFeatures = () => {
     owned.add(featureId);
   });
   return owned;
+};
+
+const getEncumbranceValue = () => {
+  const strengthRank = skillRanks.get("Strength") || 0;
+  const ownsPackhorse = getAllOwnedFeatures().has("packhorse");
+  if (ownsPackhorse) {
+    return 20 + strengthRank * 2;
+  }
+  return 10 + strengthRank;
+};
+
+const updateEncumbranceDisplay = () => {
+  const maxValue = getEncumbranceValue() || 10;
+  const currentValue = 0;
+  const titles = Array.from(document.querySelectorAll('[data-role="equipment-title"]'));
+  titles.forEach((el) => {
+    el.textContent = `EQUIPMENT (ENCUMBRANCE ${currentValue}/${maxValue})`;
+  });
 };
 
 const canPurchaseFeature = (featureId) => {
@@ -1468,7 +2233,6 @@ const updateStatsForBackground = async (backgroundName) => {
   if (!backgroundName || statBadgeMaps.size === 0) return;
   // Force refresh to pick up background changes
   backgroundSourceCache = null;
-  currentBackgroundName = backgroundName;
   const modifiers = await getBackgroundModifiers(backgroundName);
   currentStatModifiers = modifiers;
   backgroundSkillModifiers = await getBackgroundSkillModifiers(backgroundName);
@@ -1554,6 +2318,48 @@ const getStatInitial = (name) => {
   return statState.get(name)?.initial ?? 0;
 };
 
+const getStatCurrent = (name) => {
+  const entry = statState.get(name);
+  if (!entry) return getStatInitial(name);
+  return entry.current ?? entry.initial ?? 0;
+};
+
+const adjustStatCurrent = (name, delta) => {
+  const entry = statState.get(name);
+  if (!entry) return;
+  const initial = entry.initial ?? 0;
+  const current = entry.current ?? initial;
+  const nextCurrent = Math.max(0, current + delta);
+  statState.set(name, { ...entry, current: nextCurrent });
+  statBadgeMaps.forEach((map) => {
+    const valueEl = map.get(name);
+    if (valueEl) {
+      valueEl.textContent = `${nextCurrent}/${initial}`;
+      applyStatBadgeColor(valueEl, name, initial);
+    }
+  });
+  schedulePersist();
+  return nextCurrent;
+};
+
+const adjustStatCurrentClamped = (name, delta) => {
+  const entry = statState.get(name);
+  if (!entry) return;
+  const initial = entry.initial ?? 0;
+  const current = entry.current ?? initial;
+  const nextCurrent = Math.max(0, Math.min(initial, current + delta));
+  statState.set(name, { ...entry, current: nextCurrent });
+  statBadgeMaps.forEach((map) => {
+    const valueEl = map.get(name);
+    if (valueEl) {
+      valueEl.textContent = `${nextCurrent}/${initial}`;
+      applyStatBadgeColor(valueEl, name, initial);
+    }
+  });
+  schedulePersist();
+  return nextCurrent;
+};
+
 const setStatState = (name, initial) => {
   const previous = statState.get(name);
   const previousInitial = previous ? previous.initial : initial;
@@ -1635,6 +2441,49 @@ const getSkillBaseStat = (skillName) => {
     // Knowledge, Science, Psionic use MIND as their base
     return "MIND";
   }
+};
+
+const resolveWeaponSkillName = (skillLabel) => {
+  if (!skillLabel) return "";
+  const normalized = String(skillLabel).trim().toLowerCase();
+  if (normalized === "ranged - light" || normalized === "ranged light" || normalized === "ranged-light") {
+    return "Firearms - Light";
+  }
+  return skillLabel;
+};
+
+const getSkillTotalValue = (skillName) => {
+  if (!skillName) return 0;
+  const baseStatName = getSkillBaseStat(skillName);
+  const baseStatValue = baseStatName ? getStatInitial(baseStatName) : 0;
+  const bodyPenalty = baseStatName === "BODY" ? getBodyActionPenalty() : 0;
+  const rank = skillRanks.get(skillName) || 0;
+  const backgroundMod = backgroundSkillModifiers.get(skillName)?.modifier || 0;
+  let featureMod = 0;
+  const ownedFeatures = getAllOwnedFeatures();
+  ownedFeatures.forEach((featureId) => {
+    const featureDef = featuresMap.get(featureId);
+    if (featureDef?.skillBonuses && featureDef.skillBonuses[skillName]) {
+      featureMod += featureDef.skillBonuses[skillName];
+    }
+  });
+  const modifier = backgroundMod + featureMod;
+  return baseStatValue + modifier + rank + bodyPenalty;
+};
+
+const getBodyActionPenalty = () => {
+  if (!equippedArmor.length) return 0;
+  const armorRank = skillRanks.get("Armor") || 0;
+  let penalty = 0;
+  equippedArmor.forEach((armorId) => {
+    const armor = equipmentCatalog.Armor.find((item) => item.id === armorId);
+    if (!armor) return;
+    const requiredRank = armor.requiresArmorRank ?? 0;
+    if (requiredRank > 0 && armorRank < requiredRank) {
+      penalty += armor.bodyPenalty ?? 0;
+    }
+  });
+  return penalty;
 };
 
 const recomputeDerivedStats = () => {
@@ -1800,6 +2649,11 @@ const loadStatsBadges = async () => {
           badge.dataset.stat = stat.name;
           badge.style.cursor = "pointer";
         }
+        if (["BODY", "MIND", "LUCK"].includes(stat.name)) {
+          badge.dataset.rollRole = "stat-roll-badge";
+          badge.dataset.stat = stat.name;
+          badge.style.cursor = "pointer";
+        }
         const valueEl = badge.querySelector(".stat-value");
         if (valueEl) {
           const map = statBadgeMaps.get(index);
@@ -1820,6 +2674,13 @@ const loadStatsBadges = async () => {
         <span class="stat-name">XP</span>
         <span class="stat-value">0</span>
       `;
+      const xpEntry = statState.get("XP");
+      if (!xpEntry) {
+        statState.set("XP", { initial: 0, current: 0 });
+      } else {
+        const valueEl = xpBadge.querySelector(".stat-value");
+        if (valueEl) valueEl.textContent = String(xpEntry.current ?? xpEntry.initial ?? 0);
+      }
       container.appendChild(xpBadge);
     });
     
@@ -1829,6 +2690,11 @@ const loadStatsBadges = async () => {
         const badge = document.createElement("div");
         badge.className = "stat-badge";
         badge.dataset.statName = stat.name;
+        if (["HEALTH", "POWER"].includes(stat.name)) {
+          badge.dataset.role = "derived-stat-badge";
+          badge.dataset.stat = stat.name;
+          badge.style.cursor = "pointer";
+        }
         badge.innerHTML = `
           <span class="stat-emoji">${stat.emoji || "⭐"}</span>
           <span class="stat-name">${stat.name}</span>
@@ -1843,6 +2709,8 @@ const loadStatsBadges = async () => {
         container.appendChild(badge);
       });
     });
+    attachStatRollListeners();
+    attachSkillRollListeners();
   } catch (error) {
     badgeContainers.forEach((container) => {
       container.innerHTML = "<p>Stats unavailable.</p>";
@@ -1900,6 +2768,7 @@ const populateSkillList = (category) => {
       return true;
     });
     skillList.innerHTML = "";
+    const hideDescriptions = category === "Language";
     filteredSkills.forEach((skill) => {
       // Get current rank and modifier for this skill
       const rank = skillRanks.get(skill.name) || 0;
@@ -1929,7 +2798,7 @@ const populateSkillList = (category) => {
       const increaseStatus = canIncreaseSkill(skill.name, rank);
       const canIncrease = increaseStatus.allowed;
       const canDecrease = rank > 0;
-      const tooltipText = skill.description || "";
+      const tooltipText = hideDescriptions ? "" : skill.description || "";
       const actionText = canIncrease ? `Left click: Add/increase (cost: ${increaseStatus.cost} pts)` : increaseStatus.reason;
       const decreaseText = canDecrease ? `Right click: Decrease rank` : "";
       const tooltipLines = tooltipText ? [tooltipText] : [];
@@ -1947,13 +2816,16 @@ const populateSkillList = (category) => {
       button.style.borderColor = skillColor;
       button.style.color = skillColor;
       
+      const descHtml = hideDescriptions
+        ? ""
+        : `<div class="skill-picker-item-desc">${skill.description || ""}</div>`;
       button.innerHTML = `
         <div class="skill-picker-item-title">
           <span class="skill-emoji">${skill.emoji || "✨"}</span>
           <span>${skill.name}</span>
           <span style="margin-left: auto; color: rgba(255, 255, 255, 0.8); font-size: 0.9rem;">${rankModText}</span>
         </div>
-        <div class="skill-picker-item-desc">${skill.description || ""}</div>
+        ${descHtml}
       `;
       skillList.appendChild(button);
     });
@@ -2026,6 +2898,9 @@ const renderSkills = () => {
     (cat) => !skillCategoryOrder.includes(cat)
   ).sort((a, b) => a.localeCompare(b));
 
+  updateEncumbranceDisplay();
+  const bodyActionPenalty = getBodyActionPenalty();
+
   // Render all categories in order, even if they have no skills
   skillCategoryOrder.forEach((category) => {
     const categorySkills = skillsByCategory.get(category) || [];
@@ -2034,19 +2909,20 @@ const renderSkills = () => {
     lists.forEach((list, index) => {
       // Only show category badges in edit mode, not in sheet mode
       const isSheetView = index === 0 || activePanelKey() === "sheet";
-      if (!isSheetView) {
-        // Add category badge (always show, even if no skills)
-        const categoryBadge = document.createElement("div");
-        categoryBadge.className = "skill-category-badge";
-        categoryBadge.title = category;
+      const categoryBadge = document.createElement("div");
+      categoryBadge.className = "skill-category-badge";
+      categoryBadge.title = category;
+      if (isSheetView) {
+        categoryBadge.dataset.role = "skill-category-badge-sheet";
+      } else {
         categoryBadge.dataset.role = "skill-category-badge";
-        categoryBadge.dataset.category = category;
-        categoryBadge.style.cursor = "pointer";
-        categoryBadge.innerHTML = `
-          <span class="skill-category-emoji">${categoryEmoji}</span>
-        `;
-        list.appendChild(categoryBadge);
       }
+      categoryBadge.dataset.category = category;
+      categoryBadge.style.cursor = "pointer";
+      categoryBadge.innerHTML = `
+        <span class="skill-category-emoji">${categoryEmoji}</span>
+      `;
+      list.appendChild(categoryBadge);
     });
 
     // Only render skills if there are any in this category
@@ -2077,9 +2953,10 @@ const renderSkills = () => {
         if (baseStatName) {
           baseStatValue = getStatInitial(baseStatName);
         }
+        const bodyPenalty = baseStatName === "BODY" ? bodyActionPenalty : 0;
 
-        // Total = base stat + modifier + ranks
-        const total = baseStatValue + modifier + rank;
+        // Total = base stat + modifier + ranks + armor penalties
+        const total = baseStatValue + modifier + rank + bodyPenalty;
 
         // Build tooltip with description and calculation
         const calcParts = [];
@@ -2089,6 +2966,7 @@ const renderSkills = () => {
           calcParts.push(`Modifier ${modSign}${modifier}`);
         }
         if (rank > 0) calcParts.push(`Rank ${rank}`);
+        if (bodyPenalty !== 0) calcParts.push(`Armor penalty ${bodyPenalty}`);
         const calcText =
           calcParts.length > 0
             ? `\n\nCalculation: ${calcParts.join(" + ")} = ${total}`
@@ -2104,6 +2982,10 @@ const renderSkills = () => {
           <span class="stat-name">${skill.name}</span>
           <span class="skill-badge-total">${total}</span>
         `;
+          badge.dataset.rollRole = "skill-roll-badge";
+          badge.dataset.skill = skill.name;
+          badge.style.cursor = "pointer";
+          badge.title = tooltipText;
         } else {
           // Add data attributes to badge for click handling
           badge.dataset.role = "skill-badge";
@@ -2195,9 +3077,10 @@ const renderSkills = () => {
         if (baseStatName) {
           baseStatValue = getStatInitial(baseStatName);
         }
+        const bodyPenalty = baseStatName === "BODY" ? bodyActionPenalty : 0;
 
-        // Total = base stat + modifier + ranks
-        const total = baseStatValue + modifier + rank;
+        // Total = base stat + modifier + ranks + armor penalties
+        const total = baseStatValue + modifier + rank + bodyPenalty;
 
         // Build tooltip with description and calculation
         const calcParts = [];
@@ -2207,6 +3090,7 @@ const renderSkills = () => {
           calcParts.push(`Modifier ${modSign}${modifier}`);
         }
         if (rank > 0) calcParts.push(`Rank ${rank}`);
+        if (bodyPenalty !== 0) calcParts.push(`Armor penalty ${bodyPenalty}`);
         const calcText =
           calcParts.length > 0
             ? `\n\nCalculation: ${calcParts.join(" + ")} = ${total}`
@@ -2598,6 +3482,1327 @@ const renderFeatures = () => {
       });
     });
   });
+
+  updateEncumbranceDisplay();
+};
+
+const getActiveEquipmentSection = () =>
+  document.querySelector('.tab-panel.is-active .equipment-section') ||
+  document.querySelector('[data-tab-panel="sheet"] .equipment-section');
+
+const renderEquipment = () => {
+  const lists = getEquipmentLists();
+  if (lists.length === 0) return;
+  const equipmentGroups = [
+    {
+      category: "Weapons",
+      items: equippedWeapons,
+      catalog: equipmentCatalog.Weapons,
+      role: "weapon-badge",
+    },
+    {
+      category: "General",
+      items: equippedGeneral,
+      catalog: equipmentCatalog.General,
+      role: "general-badge",
+    },
+    {
+      category: "Armor",
+      items: equippedArmor,
+      catalog: equipmentCatalog.Armor,
+      role: "armor-badge",
+    },
+  ];
+  const hasEquipment = equipmentGroups.some((group) => group.items.length);
+  lists.forEach((list) => {
+    list.innerHTML = "";
+    list.hidden = true;
+  });
+
+  const sections = Array.from(document.querySelectorAll(".equipment-section"));
+  sections.forEach((section) => {
+    const row = section.querySelector(".equipment-category-badges");
+    if (!row) return;
+    row.querySelectorAll(".equipment-badge").forEach((badge) => badge.remove());
+    row.querySelectorAll('[data-role="equipment-empty"]').forEach((badge) => badge.remove());
+
+    const weaponButton = row.querySelector('[data-role="equipment-category"][data-category="Weapons"]');
+    const generalButton = row.querySelector('[data-role="equipment-category"][data-category="General"]');
+    const armorButton = row.querySelector('[data-role="equipment-category"][data-category="Armor"]');
+
+    const insertBadge = (badge, anchor, after = false) => {
+      if (!anchor) {
+        row.appendChild(badge);
+        return;
+      }
+      if (!after) {
+        row.insertBefore(badge, anchor);
+        return;
+      }
+      row.insertBefore(badge, anchor.nextSibling);
+    };
+
+    equipmentGroups.forEach((group) => {
+      group.items.forEach((itemId) => {
+        const match = group.catalog.find((item) => item.id === itemId);
+        const badge = document.createElement("div");
+        badge.className = "feature-badge equipment-badge";
+        badge.dataset.role = "equipment-badge";
+        badge.dataset.category = group.category;
+        badge.dataset.itemId = itemId;
+        if (group.category === "Weapons") {
+          badge.dataset.role = "weapon-badge";
+          badge.dataset.weaponId = itemId;
+        } else if (group.category === "Armor") {
+          badge.dataset.role = "armor-badge";
+        } else {
+          badge.dataset.role = "general-badge";
+        }
+        const emoji = match?.emoji ? `${match.emoji} ` : "";
+        let name = match?.name || itemId;
+        if (itemId === "hypospray") {
+          name = `${name} ${hyposprayCharges}/${HYPO_SPRAY_MAX_CHARGES}`;
+        }
+        const removeButton = `
+          <button
+            type="button"
+            class="feature-remove equipment-remove"
+            data-role="equipment-remove"
+            data-category="${group.category}"
+            data-item-id="${itemId}"
+            aria-label="Remove ${name}"
+            title="Remove ${name}"
+          >🗑️</button>
+        `;
+        badge.innerHTML = `
+          <span class="feature-emoji">${emoji}</span>
+          <span class="feature-name">${name}</span>
+          ${removeButton}
+        `;
+        if (match?.description) {
+          const lines = [match.description];
+          if (itemId === "hypospray") {
+            lines.push(`Charges ${hyposprayCharges}/${HYPO_SPRAY_MAX_CHARGES}`);
+          }
+          if (match.requiresArmorRank) {
+            lines.push(`Requires Armor ${match.requiresArmorRank}`);
+          }
+          if (match.bodyPenalty) {
+            lines.push(`Armor penalty ${match.bodyPenalty}`);
+          }
+          badge.title = lines.join("\n");
+        }
+        if (group.category === "Weapons") {
+          insertBadge(badge, generalButton || armorButton || null, false);
+        } else if (group.category === "General") {
+          insertBadge(badge, armorButton || null, false);
+        } else {
+          insertBadge(badge, armorButton || null, true);
+        }
+      });
+    });
+
+    if (!hasEquipment) {
+      const empty = document.createElement("div");
+      empty.className = "feature-badge feature-badge--empty";
+      empty.dataset.role = "equipment-empty";
+      empty.textContent = "No equipment yet";
+      insertBadge(empty, armorButton || null, true);
+    }
+  });
+};
+
+const openEquipmentPicker = (section, category) => {
+  console.debug("[Equipment] Open picker request:", { hasSection: !!section, category });
+  if (!section || !category || !equipmentCatalog[category]) return;
+  const picker = section.querySelector('[data-role="equipment-picker"]');
+  const list = picker?.querySelector('[data-role="equipment-list-picker"]');
+  if (!picker || !list) return;
+  list.innerHTML = "";
+  const items = equipmentCatalog[category];
+  console.debug("[Equipment] Picker items:", items?.length || 0);
+  if (!items.length) {
+    const empty = document.createElement("div");
+    empty.className = "feature-badge feature-badge--empty";
+    empty.textContent = category === "Armor" ? "No armor available" : "No equipment available";
+    list.appendChild(empty);
+  }
+  items.forEach((item) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "skill-picker-item";
+    button.dataset.role = "equipment-item";
+    button.dataset.itemId = item.id;
+    button.dataset.category = category;
+    const emoji = item.emoji ? `${item.emoji} ` : "";
+    button.innerHTML = `
+      <div class="skill-picker-item-title">
+        <span>${emoji}${item.name}</span>
+      </div>
+    `;
+    list.appendChild(button);
+  });
+  picker.hidden = false;
+  console.debug("[Equipment] Picker opened.");
+};
+
+const openWeaponDetail = (section, weaponId) => {
+  if (!section || !weaponId) return;
+  const weapon = equipmentCatalog.Weapons.find((item) => item.id === weaponId);
+  if (!weapon) return;
+  const modal = section.querySelector('[data-role="weapon-detail-modal"]');
+  if (!modal) return;
+  const titleEl = modal.querySelector('[data-role="weapon-detail-title"]');
+  const descEl = modal.querySelector('[data-role="weapon-detail-description"]');
+  const dmgEl = modal.querySelector('[data-role="weapon-detail-damage"]');
+  const rollEl = modal.querySelector('[data-role="weapon-detail-roll"]');
+  const rangeEl = modal.querySelector('[data-role="weapon-detail-range"]');
+  const rollButton = modal.querySelector('[data-role="weapon-detail-roll-button"]');
+  const damageButton = modal.querySelector('[data-role="weapon-detail-damage-button"]');
+  if (titleEl) titleEl.textContent = weapon.name || "Weapon";
+  if (titleEl && weapon.emoji) {
+    titleEl.textContent = `${weapon.emoji} ${weapon.name || "Weapon"}`;
+  }
+  if (descEl) descEl.textContent = weapon.description || "Not specified";
+  if (dmgEl) dmgEl.textContent = weapon.damageTrack || "Not specified";
+  if (rollEl) rollEl.textContent = "—";
+  if (rangeEl) rangeEl.textContent = weapon.range || "—";
+  modal.dataset.weaponId = weaponId;
+  if (rollButton instanceof HTMLElement) {
+    rollButton.dataset.weaponId = weaponId;
+  }
+  if (damageButton instanceof HTMLElement) {
+    damageButton.dataset.weaponId = weaponId;
+  }
+  modal.hidden = false;
+};
+
+const closeWeaponDetail = (section) => {
+  if (!section) return;
+  const modal = section.querySelector('[data-role="weapon-detail-modal"]');
+  if (modal) {
+    modal.hidden = true;
+    modal.dataset.weaponId = "";
+  }
+};
+
+const getPipVisible = (value, pipIndex) => {
+  if (!value || value < 1 || value > 6) return false;
+  const patterns = {
+    1: [4],
+    2: [0, 8],
+    3: [0, 4, 8],
+    4: [0, 2, 6, 8],
+    5: [0, 2, 4, 6, 8],
+    6: [0, 3, 6, 2, 5, 8],
+  };
+  return (patterns[value] || []).includes(pipIndex);
+};
+
+const updateAttackDie = (dieEl, labelEl, value) => {
+  if (!dieEl) return;
+  const pips = Array.from(dieEl.querySelectorAll(".pip"));
+  pips.forEach((pip, index) => {
+    pip.classList.toggle("is-visible", getPipVisible(value, index));
+  });
+  if (labelEl) {
+    labelEl.textContent = String(value || 1);
+  }
+};
+
+const playDiceRollSound = (fallbackDurationMs = 1800) => {
+  try {
+    if (!diceRollAudio) {
+      diceRollAudio = new Audio("./audio/dice-roll.mp3");
+      diceRollAudio.preload = "auto";
+      diceRollAudio.volume = 0.7;
+    }
+    const durationMs = Number.isFinite(diceRollAudio.duration)
+      ? diceRollAudio.duration * 1000
+      : fallbackDurationMs;
+    diceRollAudio.currentTime = 0;
+    diceRollAudio.play().catch(() => {});
+    return durationMs || fallbackDurationMs;
+  } catch (error) {
+    return fallbackDurationMs;
+  }
+};
+
+const playSuccessSound = () => {
+  try {
+    if (!successAudio) {
+      successAudio = new Audio("./audio/tos_keypress2.mp3");
+      successAudio.preload = "auto";
+      successAudio.volume = 0.7;
+    }
+    successAudio.currentTime = 0;
+    successAudio.play().catch(() => {});
+  } catch (error) {
+    // Ignore audio errors.
+  }
+};
+
+const playFailureSound = () => {
+  try {
+    if (!failureAudio) {
+      failureAudio = new Audio("./audio/tos_keypress7.mp3");
+      failureAudio.preload = "auto";
+      failureAudio.volume = 0.7;
+    }
+    failureAudio.currentTime = 0;
+    failureAudio.play().catch(() => {});
+  } catch (error) {
+    // Ignore audio errors.
+  }
+};
+
+const parseDamageTrack = (track) => {
+  if (!track) return [];
+  if (Array.isArray(track)) {
+    return track.map((value) => Number.parseInt(value, 10)).filter((v) => Number.isFinite(v));
+  }
+  return String(track)
+    .split("/")
+    .map((value) => Number.parseInt(value.trim(), 10))
+    .filter((v) => Number.isFinite(v));
+};
+
+const openAttackRollModal = (section, weaponId) => {
+  if (!section) return;
+  const modal = section.querySelector('[data-role="attack-roll-modal"]');
+  if (!modal) return;
+  const titleEl = modal.querySelector('[data-role="attack-roll-title"]');
+  const skillEl = modal.querySelector('[data-role="attack-roll-skill"]');
+  const targetInput = modal.querySelector('[data-role="attack-roll-target"]');
+  const modifierInput = modal.querySelector('[data-role="attack-roll-modifier"]');
+  const visual = modal.querySelector('[data-role="attack-roll-visual"]');
+  const luckRollButton = modal.querySelector('[data-role="attack-roll-luck"]');
+  const luckTestButton = modal.querySelector('[data-role="attack-roll-luck-test"]');
+  const die1El = modal.querySelector('[data-role="attack-die-1"]');
+  const die2El = modal.querySelector('[data-role="attack-die-2"]');
+  const label1 = modal.querySelector('[data-role="attack-die-label-1"]');
+  const label2 = modal.querySelector('[data-role="attack-die-label-2"]');
+  const totalEl = modal.querySelector('[data-role="attack-dice-total"]');
+  const modEl = modal.querySelector('[data-role="attack-dice-modifier"]');
+  const resultEl = modal.querySelector('[data-role="attack-roll-result"]');
+
+  const weapon = equipmentCatalog.Weapons.find((item) => item.id === weaponId);
+  const skillLabel = weapon?.skill || "Attack";
+  const resolvedSkillName = resolveWeaponSkillName(skillLabel);
+  const skillTotalValue = resolvedSkillName ? getSkillTotalValue(resolvedSkillName) : 0;
+  const isRanged = weapon?.attackType === "ranged";
+  const crackShotBonus = isRanged && getAllOwnedFeatures().has("crack-shot") ? 1 : 0;
+  if (titleEl) {
+    const name = weapon?.name || "Attack Roll";
+    titleEl.textContent = weapon?.emoji ? `${weapon.emoji} ${name}` : name;
+  }
+  if (skillEl) {
+    const skillNameLabel = resolvedSkillName || skillLabel;
+    const totalSuffix = resolvedSkillName ? ` (${skillTotalValue})` : "";
+    skillEl.textContent = `Skill: ${skillNameLabel}${totalSuffix}${crackShotBonus ? " • Crack Shot +1" : ""}`;
+  }
+  if (targetInput) targetInput.value = "15";
+  if (modifierInput) modifierInput.value = `${skillTotalValue}`;
+  if (visual) visual.hidden = true;
+  if (visual) {
+    visual.classList.remove("is-success", "is-failure");
+  }
+  if (totalEl) totalEl.textContent = "";
+  if (modEl) modEl.textContent = "";
+  if (resultEl) resultEl.textContent = "";
+  if (luckRollButton) luckRollButton.disabled = false;
+  if (luckTestButton) luckTestButton.disabled = true;
+  attackRollState.hasUsedLuckTest = false;
+  attackRollState.lastAttackSuccess = null;
+  attackRollState.isLuckTesting = false;
+  updateAttackDie(die1El, label1, 1);
+  updateAttackDie(die2El, label2, 1);
+  modal.dataset.weaponId = weaponId || "";
+  modal.dataset.damageTrack = weapon?.damageTrack || "";
+  modal.dataset.weaponName = weapon?.name || "Weapon";
+  modal.dataset.crackShotBonus = String(crackShotBonus);
+  modal.dataset.attackRolled = "false";
+  modal.dataset.luckBonus = "0";
+  modal.dataset.luckUsedFromAttack = "false";
+  modal.dataset.luckLocked = "false";
+  modal.dataset.luckDisabled = "false";
+  modal.dataset.rollFailed = "false";
+  modal.hidden = false;
+  updateLuckButtons(modal);
+};
+
+const closeAttackRollModal = (section) => {
+  if (!section) return;
+  const modal = section.querySelector('[data-role="attack-roll-modal"]');
+  if (modal) {
+    modal.hidden = true;
+    modal.dataset.weaponId = "";
+  }
+  if (attackRollState.animationTimer) {
+    clearTimeout(attackRollState.animationTimer);
+    attackRollState.animationTimer = null;
+  }
+  attackRollState.isRolling = false;
+  attackRollState.isLuckTesting = false;
+};
+
+const openLuckTestModal = () => {
+  const modal = document.querySelector('[data-role="stat-roll-modal"]');
+  if (!(modal instanceof HTMLElement)) return;
+  const titleEl = modal.querySelector('[data-role="stat-roll-title"]');
+  const skillEl = modal.querySelector('[data-role="stat-roll-skill"]');
+  const inputs = modal.querySelector(".attack-roll-inputs");
+  const rollButton = modal.querySelector('[data-role="stat-roll-button"]');
+  const luckRollButton = modal.querySelector('[data-role="stat-roll-luck"]');
+  const luckTestButton = modal.querySelector('[data-role="stat-roll-luck-test"]');
+  const visual = modal.querySelector('[data-role="stat-roll-visual"]');
+  const die1El = modal.querySelector('[data-role="stat-die-1"]');
+  const die2El = modal.querySelector('[data-role="stat-die-2"]');
+  const label1 = modal.querySelector('[data-role="stat-die-label-1"]');
+  const label2 = modal.querySelector('[data-role="stat-die-label-2"]');
+  const totalEl = modal.querySelector('[data-role="stat-dice-total"]');
+  const modEl = modal.querySelector('[data-role="stat-dice-modifier"]');
+  const resultEl = modal.querySelector('[data-role="stat-roll-result"]');
+  const luckValue = getStatCurrent("LUCK");
+
+  if (titleEl) titleEl.textContent = "LUCK Test";
+  if (skillEl) skillEl.textContent = `Test your LUCK (roll under LUCK ${luckValue})`;
+  if (inputs instanceof HTMLElement) inputs.style.display = "none";
+  if (rollButton instanceof HTMLElement) rollButton.hidden = true;
+  if (luckRollButton instanceof HTMLElement) luckRollButton.hidden = true;
+  if (luckTestButton instanceof HTMLElement) {
+    luckTestButton.hidden = false;
+    luckTestButton.disabled = false;
+  }
+  if (visual) visual.hidden = true;
+  if (visual) visual.classList.remove("is-success", "is-failure");
+  if (totalEl) totalEl.textContent = "";
+  if (modEl) modEl.textContent = "";
+  if (resultEl) resultEl.textContent = "";
+  updateAttackDie(die1El, label1, 1);
+  updateAttackDie(die2El, label2, 1);
+  statRollState.hasUsedLuckTest = false;
+  statRollState.lastRollSuccess = null;
+  statRollState.isLuckTesting = false;
+  statRollState.isRolling = false;
+  modal.dataset.statName = "LUCK";
+  modal.dataset.rollLabel = "LUCK test";
+  modal.dataset.rollBase = String(luckValue);
+  modal.dataset.luckBonus = "0";
+  modal.dataset.luckUsedFromRoll = "false";
+  modal.dataset.luckLocked = "false";
+  modal.dataset.luckDisabled = "false";
+  modal.dataset.rollRolled = "false";
+  modal.dataset.rollFailed = "false";
+  modal.dataset.luckOnly = "true";
+  modal.hidden = false;
+  updateStatLuckButtons(modal);
+};
+
+const openStatRollModal = (statName) => {
+  const modal = document.querySelector('[data-role="stat-roll-modal"]');
+  if (!(modal instanceof HTMLElement)) return;
+  const titleEl = modal.querySelector('[data-role="stat-roll-title"]');
+  const skillEl = modal.querySelector('[data-role="stat-roll-skill"]');
+  const inputs = modal.querySelector(".attack-roll-inputs");
+  const rollButton = modal.querySelector('[data-role="stat-roll-button"]');
+  const luckRollButton = modal.querySelector('[data-role="stat-roll-luck"]');
+  const luckTestButton = modal.querySelector('[data-role="stat-roll-luck-test"]');
+  const targetInput = modal.querySelector('[data-role="stat-roll-target"]');
+  const modifierInput = modal.querySelector('[data-role="stat-roll-modifier"]');
+  const visual = modal.querySelector('[data-role="stat-roll-visual"]');
+  const die1El = modal.querySelector('[data-role="stat-die-1"]');
+  const die2El = modal.querySelector('[data-role="stat-die-2"]');
+  const label1 = modal.querySelector('[data-role="stat-die-label-1"]');
+  const label2 = modal.querySelector('[data-role="stat-die-label-2"]');
+  const totalEl = modal.querySelector('[data-role="stat-dice-total"]');
+  const modEl = modal.querySelector('[data-role="stat-dice-modifier"]');
+  const resultEl = modal.querySelector('[data-role="stat-roll-result"]');
+  const statValue = getStatCurrent(statName);
+  if (titleEl) titleEl.textContent = `${statName} Roll`;
+  if (skillEl) skillEl.textContent = `Stat: ${statName} (${statValue})`;
+  if (inputs instanceof HTMLElement) inputs.style.display = "";
+  if (rollButton instanceof HTMLElement) rollButton.hidden = false;
+  if (luckRollButton instanceof HTMLElement) luckRollButton.hidden = false;
+  if (luckTestButton instanceof HTMLElement) luckTestButton.hidden = false;
+  if (targetInput) targetInput.value = "15";
+  if (modifierInput) modifierInput.value = "0";
+  if (visual) visual.hidden = true;
+  if (visual) visual.classList.remove("is-success", "is-failure");
+  if (totalEl) totalEl.textContent = "";
+  if (modEl) modEl.textContent = "";
+  if (resultEl) resultEl.textContent = "";
+  updateAttackDie(die1El, label1, 1);
+  updateAttackDie(die2El, label2, 1);
+  statRollState.hasUsedLuckTest = false;
+  statRollState.lastRollSuccess = null;
+  statRollState.isLuckTesting = false;
+  statRollState.isRolling = false;
+  modal.dataset.statName = statName;
+  modal.dataset.rollLabel = `${statName} roll`;
+  modal.dataset.rollBase = String(statValue);
+  modal.dataset.luckBonus = "0";
+  modal.dataset.luckUsedFromRoll = "false";
+  modal.dataset.luckLocked = "false";
+  modal.dataset.luckDisabled = "false";
+  modal.dataset.rollRolled = "false";
+  modal.dataset.rollFailed = "false";
+  modal.dataset.luckOnly = "false";
+  modal.dataset.specialRoll = "";
+  modal.hidden = false;
+  updateStatLuckButtons(modal);
+};
+
+const openSkillRollModal = (skillName) => {
+  const modal = document.querySelector('[data-role="stat-roll-modal"]');
+  if (!(modal instanceof HTMLElement)) return;
+  const titleEl = modal.querySelector('[data-role="stat-roll-title"]');
+  const skillEl = modal.querySelector('[data-role="stat-roll-skill"]');
+  const inputs = modal.querySelector(".attack-roll-inputs");
+  const rollButton = modal.querySelector('[data-role="stat-roll-button"]');
+  const luckRollButton = modal.querySelector('[data-role="stat-roll-luck"]');
+  const luckTestButton = modal.querySelector('[data-role="stat-roll-luck-test"]');
+  const targetInput = modal.querySelector('[data-role="stat-roll-target"]');
+  const modifierInput = modal.querySelector('[data-role="stat-roll-modifier"]');
+  const visual = modal.querySelector('[data-role="stat-roll-visual"]');
+  const die1El = modal.querySelector('[data-role="stat-die-1"]');
+  const die2El = modal.querySelector('[data-role="stat-die-2"]');
+  const label1 = modal.querySelector('[data-role="stat-die-label-1"]');
+  const label2 = modal.querySelector('[data-role="stat-die-label-2"]');
+  const totalEl = modal.querySelector('[data-role="stat-dice-total"]');
+  const modEl = modal.querySelector('[data-role="stat-dice-modifier"]');
+  const resultEl = modal.querySelector('[data-role="stat-roll-result"]');
+  const skillTotalValue = getSkillTotalValue(skillName);
+  if (titleEl) titleEl.textContent = `${skillName} Roll`;
+  if (skillEl) skillEl.textContent = `Skill: ${skillName} (${skillTotalValue})`;
+  if (inputs instanceof HTMLElement) inputs.style.display = "";
+  if (rollButton instanceof HTMLElement) rollButton.hidden = false;
+  if (luckRollButton instanceof HTMLElement) luckRollButton.hidden = false;
+  if (luckTestButton instanceof HTMLElement) luckTestButton.hidden = false;
+  if (targetInput) targetInput.value = "15";
+  if (modifierInput) modifierInput.value = "0";
+  if (visual) visual.hidden = true;
+  if (visual) visual.classList.remove("is-success", "is-failure");
+  if (totalEl) totalEl.textContent = "";
+  if (modEl) modEl.textContent = "";
+  if (resultEl) resultEl.textContent = "";
+  updateAttackDie(die1El, label1, 1);
+  updateAttackDie(die2El, label2, 1);
+  statRollState.hasUsedLuckTest = false;
+  statRollState.lastRollSuccess = null;
+  statRollState.isLuckTesting = false;
+  statRollState.isRolling = false;
+  modal.dataset.statName = skillName;
+  modal.dataset.rollLabel = `${skillName} roll`;
+  modal.dataset.rollBase = String(skillTotalValue);
+  modal.dataset.luckBonus = "0";
+  modal.dataset.luckUsedFromRoll = "false";
+  modal.dataset.luckLocked = "false";
+  modal.dataset.luckDisabled = "false";
+  modal.dataset.rollRolled = "false";
+  modal.dataset.rollFailed = "false";
+  modal.dataset.luckOnly = "false";
+  modal.dataset.specialRoll = "";
+  modal.hidden = false;
+  updateStatLuckButtons(modal);
+};
+
+const openHyposprayRollModal = () => {
+  const modal = document.querySelector('[data-role="stat-roll-modal"]');
+  if (!(modal instanceof HTMLElement)) return;
+  openSkillRollModal("Medicine");
+  const titleEl = modal.querySelector('[data-role="stat-roll-title"]');
+  const skillEl = modal.querySelector('[data-role="stat-roll-skill"]');
+  if (titleEl) titleEl.textContent = "Hypospray";
+  if (skillEl) skillEl.textContent = "Skill: Medicine (Hypospray)";
+  modal.dataset.rollLabel = "Hypospray (Medicine) roll";
+  modal.dataset.specialRoll = "hypospray";
+};
+
+const openSheetSkillCategoryModal = (category) => {
+  const modal = document.querySelector('[data-role="sheet-skill-category-modal"]');
+  if (!(modal instanceof HTMLElement)) return;
+  const titleEl = modal.querySelector('[data-role="sheet-skill-category-title"]');
+  const listEl = modal.querySelector('[data-role="sheet-skill-category-list"]');
+  if (titleEl) titleEl.textContent = `${category} Skills`;
+  if (listEl instanceof HTMLElement) {
+    listEl.innerHTML = "";
+    const categorySkills = skills
+      .filter((skill) => skill.category === category)
+      .sort((a, b) => a.name.localeCompare(b.name));
+    if (!categorySkills.length) {
+      const empty = document.createElement("div");
+      empty.className = "feature-badge feature-badge--empty";
+      empty.textContent = "No skills in this category.";
+      listEl.appendChild(empty);
+    }
+    categorySkills.forEach((skill) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "skill-picker-item";
+      button.dataset.role = "sheet-skill-roll";
+      button.dataset.skill = skill.name;
+      const emoji = skill.emoji ? `${skill.emoji} ` : "";
+      const total = getSkillTotalValue(skill.name);
+      button.innerHTML = `
+        <div class="skill-picker-item-title">
+          <span>${emoji}${skill.name}</span>
+          <span class="skill-picker-item-total">${total}</span>
+        </div>
+      `;
+      listEl.appendChild(button);
+    });
+  }
+  modal.hidden = false;
+};
+
+const closeStatRollModal = () => {
+  const modal = document.querySelector('[data-role="stat-roll-modal"]');
+  if (modal instanceof HTMLElement) {
+    modal.hidden = true;
+    modal.dataset.statName = "";
+  }
+  if (statRollState.animationTimer) {
+    clearTimeout(statRollState.animationTimer);
+    statRollState.animationTimer = null;
+  }
+  statRollState.isRolling = false;
+  statRollState.isLuckTesting = false;
+};
+
+const updateStatLuckButtons = (modal) => {
+  if (!modal) return;
+  const rollButton = modal.querySelector('[data-role="stat-roll-button"]');
+  const luckRollButton = modal.querySelector('[data-role="stat-roll-luck"]');
+  const luckTestButton = modal.querySelector('[data-role="stat-roll-luck-test"]');
+  const luckOnly = modal.dataset.luckOnly === "true";
+  const currentLuck = getStatCurrent("LUCK");
+  const hasLuck = currentLuck > 0;
+  const hasRolled = modal.dataset.rollRolled === "true";
+  const lockedToRoll = modal.dataset.luckLocked === "true";
+  const luckDisabled = modal.dataset.luckDisabled === "true";
+  const rollFailed = modal.dataset.rollFailed === "true";
+  const alreadyUsedLuck = statRollState.hasUsedLuckTest || modal.dataset.luckUsedFromRoll === "true";
+  const canLuckTest =
+    statRollState.lastRollSuccess === false &&
+    !alreadyUsedLuck &&
+    modal.dataset.luckUsedFromRoll !== "true";
+  const canLuckOnlyTest = !luckDisabled && hasLuck;
+  if (luckRollButton) {
+    luckRollButton.disabled =
+      statRollState.isRolling ||
+      statRollState.isLuckTesting ||
+      alreadyUsedLuck ||
+      hasRolled ||
+      !hasLuck ||
+      lockedToRoll ||
+      luckDisabled ||
+      luckOnly;
+  }
+  if (luckTestButton) {
+    luckTestButton.disabled =
+      statRollState.isRolling ||
+      statRollState.isLuckTesting ||
+      (luckOnly ? !canLuckOnlyTest : !canLuckTest) ||
+      !hasLuck ||
+      lockedToRoll ||
+      luckDisabled;
+  }
+  if (rollButton) {
+    rollButton.disabled =
+      statRollState.isRolling || statRollState.isLuckTesting || rollFailed || luckOnly;
+  }
+};
+
+const startStatLuckTest = (modal, mode) => {
+  if (!modal || statRollState.isRolling || statRollState.isLuckTesting) return;
+  const visual = modal.querySelector('[data-role="stat-roll-visual"]');
+  const die1El = modal.querySelector('[data-role="stat-die-1"]');
+  const die2El = modal.querySelector('[data-role="stat-die-2"]');
+  const label1 = modal.querySelector('[data-role="stat-die-label-1"]');
+  const label2 = modal.querySelector('[data-role="stat-die-label-2"]');
+  const totalEl = modal.querySelector('[data-role="stat-dice-total"]');
+  const resultEl = modal.querySelector('[data-role="stat-roll-result"]');
+  const statName = modal.dataset.statName || "Stat";
+  const luckBefore = getStatCurrent("LUCK");
+  if (luckBefore <= 0) {
+    if (resultEl) {
+      resultEl.textContent = "LUCK is 0 — cannot test.";
+    }
+    updateStatLuckButtons(modal);
+    return;
+  }
+  statRollState.isLuckTesting = true;
+  if (visual) visual.hidden = false;
+  if (visual) visual.classList.remove("is-success", "is-failure");
+  if (totalEl) totalEl.textContent = "";
+  if (resultEl) resultEl.textContent = "";
+
+  const finalDie1 = Math.floor(Math.random() * 6) + 1;
+  const finalDie2 = Math.floor(Math.random() * 6) + 1;
+  const diceTotal = finalDie1 + finalDie2;
+  const success = diceTotal <= luckBefore;
+
+  const durationMs = playDiceRollSound(1400);
+  const startTime = Date.now();
+  const animate = () => {
+    const elapsed = Date.now() - startTime;
+    const progress = Math.min(1, elapsed / durationMs);
+    const animDie1 = Math.floor(Math.random() * 6) + 1;
+    const animDie2 = Math.floor(Math.random() * 6) + 1;
+    updateAttackDie(die1El, label1, animDie1);
+    updateAttackDie(die2El, label2, animDie2);
+
+    if (progress >= 1) {
+      updateAttackDie(die1El, label1, finalDie1);
+      updateAttackDie(die2El, label2, finalDie2);
+      if (totalEl) totalEl.textContent = `= ${diceTotal}`;
+      if (resultEl) {
+        const label = mode === "pre" ? "LUCK test (pre-roll)" : "LUCK test";
+        const bonusNote = mode === "pre" && success ? " • +2 to roll" : "";
+        resultEl.textContent = `${label}: ${diceTotal} vs LUCK ${luckBefore} • ${success ? "SUCCESS" : "FAILURE"}${bonusNote}`;
+      }
+      if (visual) {
+        visual.classList.toggle("is-success", success);
+        visual.classList.toggle("is-failure", !success);
+      }
+      if (success) {
+        playSuccessSound();
+      } else {
+        playFailureSound();
+      }
+      adjustStatCurrent("LUCK", -1);
+      statRollState.hasUsedLuckTest = true;
+      if (mode === "pre") {
+        modal.dataset.luckBonus = success ? "2" : "0";
+        modal.dataset.luckUsedFromRoll = "true";
+        modal.dataset.luckLocked = "true";
+        if (!success) {
+          modal.dataset.luckDisabled = "true";
+        }
+      }
+      if (mode === "single") {
+        modal.dataset.luckDisabled = "true";
+      }
+      appendChangeLogEntry(
+        `Luck test (${statName}): 2d6 ${finalDie1}+${finalDie2} = ${diceTotal} vs LUCK ${luckBefore} (${success ? "Success" : "Failure"})`,
+        []
+      );
+      statRollState.isLuckTesting = false;
+      updateStatLuckButtons(modal);
+      if (mode === "reroll" && success) {
+        startStatRoll(modal);
+      }
+      return;
+    }
+    setTimeout(animate, Math.max(40, Math.floor(20 + 260 * progress * progress)));
+  };
+  animate();
+};
+
+const startStatRoll = (modal) => {
+  if (!modal || statRollState.isRolling) return;
+  const targetInput = modal.querySelector('[data-role="stat-roll-target"]');
+  const modifierInput = modal.querySelector('[data-role="stat-roll-modifier"]');
+  const visual = modal.querySelector('[data-role="stat-roll-visual"]');
+  const die1El = modal.querySelector('[data-role="stat-die-1"]');
+  const die2El = modal.querySelector('[data-role="stat-die-2"]');
+  const label1 = modal.querySelector('[data-role="stat-die-label-1"]');
+  const label2 = modal.querySelector('[data-role="stat-die-label-2"]');
+  const totalEl = modal.querySelector('[data-role="stat-dice-total"]');
+  const modEl = modal.querySelector('[data-role="stat-dice-modifier"]');
+  const resultEl = modal.querySelector('[data-role="stat-roll-result"]');
+  const statName = modal.dataset.statName || "Stat";
+  const rollLabel = modal.dataset.rollLabel || `${statName} roll`;
+  const specialRoll = modal.dataset.specialRoll || "";
+  const rollBase = Number.parseInt(modal.dataset.rollBase || "0", 10) || 0;
+  const luckBonus = Number.parseInt(modal.dataset.luckBonus || "0", 10) || 0;
+
+  const targetNumber = Number.parseInt(targetInput?.value, 10) || 15;
+  const baseModifier = Number.parseInt(modifierInput?.value, 10) || 0;
+  const modifier = rollBase + baseModifier + luckBonus;
+  const finalDie1 = Math.floor(Math.random() * 6) + 1;
+  const finalDie2 = Math.floor(Math.random() * 6) + 1;
+  const diceTotal = finalDie1 + finalDie2;
+  const total = diceTotal + modifier;
+  let success = total >= targetNumber;
+  const isCritical = finalDie1 === 6 && finalDie2 === 6;
+  const isFumble = finalDie1 === 1 && finalDie2 === 1;
+  if (isFumble) {
+    success = false;
+  }
+
+  if (visual) visual.hidden = false;
+  if (visual) {
+    visual.classList.remove("is-success", "is-failure");
+  }
+  if (totalEl) totalEl.textContent = "";
+  if (modEl) modEl.textContent = "";
+  if (resultEl) resultEl.textContent = "";
+
+  statRollState.isRolling = true;
+  const durationMs = playDiceRollSound(1400);
+  const startTime = Date.now();
+  const animate = () => {
+    const elapsed = Date.now() - startTime;
+    const progress = Math.min(1, elapsed / durationMs);
+    const animDie1 = Math.floor(Math.random() * 6) + 1;
+    const animDie2 = Math.floor(Math.random() * 6) + 1;
+    updateAttackDie(die1El, label1, animDie1);
+    updateAttackDie(die2El, label2, animDie2);
+
+    if (progress >= 1) {
+      updateAttackDie(die1El, label1, finalDie1);
+      updateAttackDie(die2El, label2, finalDie2);
+      if (totalEl) totalEl.textContent = `= ${diceTotal}`;
+      if (modEl) {
+        modEl.textContent = modifier ? `${modifier > 0 ? "+" : ""}${modifier}` : "";
+      }
+      if (resultEl) {
+        if (specialRoll === "hypospray") {
+          if (isFumble) {
+            resultEl.textContent = "FUMBLE: Target takes 1 damage (manual apply).";
+          } else if (isCritical) {
+            resultEl.textContent = "CRITICAL SUCCESS: Target heals 8 HEALTH (manual apply).";
+          } else if (success) {
+            resultEl.textContent = "SUCCESS: Target heals 4 HEALTH (manual apply).";
+          } else {
+            resultEl.textContent = `FAILURE: No healing (Total ${total} vs Target ${targetNumber}).`;
+          }
+        } else {
+          resultEl.textContent = `Total: ${total} vs Target ${targetNumber} • ${success ? "SUCCESS" : "FAILURE"}`;
+        }
+      }
+      if (visual) {
+        visual.classList.toggle("is-success", success);
+        visual.classList.toggle("is-failure", !success);
+      }
+      if (success) {
+        playSuccessSound();
+      } else {
+        playFailureSound();
+      }
+      statRollState.lastRollSuccess = success;
+      modal.dataset.rollRolled = "true";
+      if (!success) {
+        modal.dataset.rollFailed = "true";
+      }
+      if (specialRoll === "hypospray") {
+        hyposprayCharges = Math.max(0, hyposprayCharges - 1);
+        renderEquipment();
+        schedulePersist();
+        let outcomeText = "Failure";
+        if (isFumble) {
+          outcomeText = "Failure (Fumble: target takes 1 damage)";
+        } else if (isCritical) {
+          outcomeText = "Success (Critical: target heals 8 HEALTH)";
+        } else if (success) {
+          outcomeText = "Success (target heals 4 HEALTH)";
+        }
+        appendChangeLogEntry(
+          `Hypospray (Medicine): 2d6 ${finalDie1}+${finalDie2} ${modifier >= 0 ? "+" : ""}${modifier} = ${total} vs ${targetNumber} (${outcomeText})`,
+          []
+        );
+      } else {
+        appendChangeLogEntry(
+          `${rollLabel}: 2d6 ${finalDie1}+${finalDie2} ${modifier >= 0 ? "+" : ""}${modifier} = ${total} vs ${targetNumber} (${success ? "Success" : "Failure"})`,
+          []
+        );
+      }
+      modal.dataset.luckLocked = "false";
+      updateStatLuckButtons(modal);
+      statRollState.isRolling = false;
+      statRollState.animationTimer = null;
+      return;
+    }
+    statRollState.animationTimer = setTimeout(
+      animate,
+      Math.max(40, Math.floor(20 + 260 * progress * progress))
+    );
+  };
+  animate();
+};
+
+const openDerivedStatActionModal = (statName) => {
+  const modal = document.querySelector('[data-role="derived-stat-action-modal"]');
+  const amountModal = document.querySelector('[data-role="derived-stat-amount-modal"]');
+  if (!(modal instanceof HTMLElement)) return;
+  if (amountModal instanceof HTMLElement) amountModal.hidden = true;
+  const titleEl = modal.querySelector('[data-role="derived-stat-action-title"]');
+  const damageButton = modal.querySelector('[data-role="derived-stat-action"][data-action="damage"]');
+  const healButton = modal.querySelector('[data-role="derived-stat-action"][data-action="healing"]');
+  const entry = statState.get(statName);
+  const current = entry?.current ?? 0;
+  const initial = entry?.initial ?? 0;
+  if (titleEl) titleEl.textContent = statName;
+  if (damageButton instanceof HTMLButtonElement) {
+    damageButton.disabled = current <= 0;
+  }
+  if (healButton instanceof HTMLButtonElement) {
+    healButton.disabled = current >= initial;
+  }
+  modal.dataset.stat = statName;
+  modal.hidden = false;
+};
+
+const closeDerivedStatActionModal = () => {
+  const modal = document.querySelector('[data-role="derived-stat-action-modal"]');
+  if (modal instanceof HTMLElement) {
+    modal.hidden = true;
+    modal.dataset.stat = "";
+  }
+};
+
+const openDerivedStatAmountModal = (statName, action) => {
+  const modal = document.querySelector('[data-role="derived-stat-amount-modal"]');
+  if (!(modal instanceof HTMLElement)) return;
+  const titleEl = modal.querySelector('[data-role="derived-stat-amount-title"]');
+  const grid = modal.querySelector('[data-role="derived-stat-amount-grid"]');
+  const entry = statState.get(statName);
+  const current = entry?.current ?? 0;
+  const initial = entry?.initial ?? 0;
+  const maxAmount = action === "damage" ? current : Math.max(0, initial - current);
+  if (titleEl) {
+    titleEl.textContent = action === "damage" ? "💔 Damage" : "💚 Healing";
+  }
+  if (grid instanceof HTMLElement) {
+    grid.innerHTML = "";
+    for (let i = 1; i <= 9; i += 1) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "derived-stat-amount-button";
+      button.dataset.role = "derived-stat-amount";
+      button.dataset.amount = String(i);
+      if (i > maxAmount || maxAmount <= 0) {
+        button.disabled = true;
+      }
+      button.textContent = String(i);
+      grid.appendChild(button);
+    }
+  }
+  modal.dataset.stat = statName;
+  modal.dataset.action = action;
+  modal.hidden = false;
+};
+
+const closeDerivedStatAmountModal = () => {
+  const modal = document.querySelector('[data-role="derived-stat-amount-modal"]');
+  if (modal instanceof HTMLElement) {
+    modal.hidden = true;
+    modal.dataset.stat = "";
+    modal.dataset.action = "";
+  }
+};
+
+const applyDerivedStatChange = (statName, action, amount) => {
+  const entry = statState.get(statName);
+  if (!entry) return;
+  const initial = entry.initial ?? 0;
+  const current = entry.current ?? initial;
+  const delta = action === "damage" ? -amount : amount;
+  const nextCurrent = adjustStatCurrentClamped(statName, delta);
+  appendChangeLogEntry(
+    `${statName} ${action === "damage" ? "damage" : "healing"}: ${amount} (${current}/${initial} → ${nextCurrent}/${initial})`,
+    []
+  );
+};
+
+const updateLuckButtons = (modal) => {
+  if (!modal) return;
+  const luckRollButton = modal.querySelector('[data-role="attack-roll-luck"]');
+  const luckTestButton = modal.querySelector('[data-role="attack-roll-luck-test"]');
+  const attackRollButton = modal.querySelector('[data-role="attack-roll-button"]');
+  const currentLuck = getStatCurrent("LUCK");
+  const hasLuck = currentLuck > 0;
+  const hasRolled = modal.dataset.attackRolled === "true";
+  const lockedToAttack = modal.dataset.luckLocked === "true";
+  const luckDisabled = modal.dataset.luckDisabled === "true";
+  const rollFailed = modal.dataset.rollFailed === "true";
+  const alreadyUsedLuck = attackRollState.hasUsedLuckTest || modal.dataset.luckUsedFromAttack === "true";
+  const canLuckTest =
+    attackRollState.lastAttackSuccess === false &&
+    !alreadyUsedLuck &&
+    modal.dataset.luckUsedFromAttack !== "true";
+  if (luckRollButton) {
+    luckRollButton.disabled =
+      attackRollState.isRolling ||
+      attackRollState.isLuckTesting ||
+      alreadyUsedLuck ||
+      hasRolled ||
+      !hasLuck ||
+      lockedToAttack ||
+      luckDisabled;
+  }
+  if (luckTestButton) {
+    luckTestButton.disabled =
+      attackRollState.isRolling ||
+      attackRollState.isLuckTesting ||
+      !canLuckTest ||
+      !hasLuck ||
+      lockedToAttack ||
+      luckDisabled;
+  }
+  if (attackRollButton) {
+    attackRollButton.disabled =
+      attackRollState.isRolling || attackRollState.isLuckTesting || rollFailed;
+  }
+};
+
+const startLuckTest = (modal, mode) => {
+  if (!modal || attackRollState.isRolling || attackRollState.isLuckTesting) return;
+  const visual = modal.querySelector('[data-role="attack-roll-visual"]');
+  const die1El = modal.querySelector('[data-role="attack-die-1"]');
+  const die2El = modal.querySelector('[data-role="attack-die-2"]');
+  const label1 = modal.querySelector('[data-role="attack-die-label-1"]');
+  const label2 = modal.querySelector('[data-role="attack-die-label-2"]');
+  const totalEl = modal.querySelector('[data-role="attack-dice-total"]');
+  const modEl = modal.querySelector('[data-role="attack-dice-modifier"]');
+  const resultEl = modal.querySelector('[data-role="attack-roll-result"]');
+  const weaponName = modal.dataset.weaponName || "Weapon";
+  const weaponSkillLabel = modal.dataset.weaponSkill || "";
+  const resolvedSkillName = resolveWeaponSkillName(weaponSkillLabel);
+  const hasStrongarm = getAllOwnedFeatures().has("strongarm");
+  const luckBefore = getStatCurrent("LUCK");
+  if (luckBefore <= 0) {
+    if (resultEl) {
+      resultEl.textContent = "LUCK is 0 — cannot test.";
+    }
+    updateLuckButtons(modal);
+    return;
+  }
+
+  attackRollState.isLuckTesting = true;
+  if (visual) visual.hidden = false;
+  if (visual) {
+    visual.classList.remove("is-success", "is-failure");
+  }
+  if (totalEl) totalEl.textContent = "";
+  if (modEl) modEl.textContent = "";
+  if (resultEl) resultEl.textContent = "";
+
+  const finalDie1 = Math.floor(Math.random() * 6) + 1;
+  const finalDie2 = Math.floor(Math.random() * 6) + 1;
+  const diceTotal = finalDie1 + finalDie2;
+  const success = diceTotal <= luckBefore;
+
+  const durationMs = playDiceRollSound(1400);
+  const startTime = Date.now();
+  const animate = () => {
+    const elapsed = Date.now() - startTime;
+    const progress = Math.min(1, elapsed / durationMs);
+    const animDie1 = Math.floor(Math.random() * 6) + 1;
+    const animDie2 = Math.floor(Math.random() * 6) + 1;
+    updateAttackDie(die1El, label1, animDie1);
+    updateAttackDie(die2El, label2, animDie2);
+
+    if (progress >= 1) {
+      updateAttackDie(die1El, label1, finalDie1);
+      updateAttackDie(die2El, label2, finalDie2);
+      if (totalEl) totalEl.textContent = `= ${diceTotal}`;
+      if (resultEl) {
+        const label = mode === "pre" ? "LUCK test (pre-attack)" : "LUCK test";
+        const bonusNote = mode === "pre" && success ? " • +2 to attack" : "";
+        resultEl.textContent = `${label}: ${diceTotal} vs LUCK ${luckBefore} • ${success ? "SUCCESS" : "FAILURE"}${bonusNote}`;
+      }
+      if (visual) {
+        visual.classList.toggle("is-success", success);
+        visual.classList.toggle("is-failure", !success);
+      }
+      if (success) {
+        playSuccessSound();
+      } else {
+        playFailureSound();
+      }
+      adjustStatCurrent("LUCK", -1);
+      attackRollState.hasUsedLuckTest = true;
+      if (mode === "pre") {
+        modal.dataset.luckBonus = success ? "2" : "0";
+        modal.dataset.luckUsedFromAttack = "true";
+        modal.dataset.luckLocked = "true";
+        if (!success) {
+          modal.dataset.luckDisabled = "true";
+        }
+      }
+      appendChangeLogEntry(
+        `Luck test (${weaponName}): 2d6 ${finalDie1}+${finalDie2} = ${diceTotal} vs LUCK ${luckBefore} (${success ? "Success" : "Failure"})`,
+        []
+      );
+      attackRollState.isLuckTesting = false;
+      updateLuckButtons(modal);
+      if (mode === "reroll" && success) {
+        startAttackRoll(modal);
+      }
+      return;
+    }
+    setTimeout(animate, Math.max(40, Math.floor(20 + 260 * progress * progress)));
+  };
+  animate();
+};
+
+const startAttackRoll = (modal) => {
+  if (!modal || attackRollState.isRolling) return;
+  const targetInput = modal.querySelector('[data-role="attack-roll-target"]');
+  const modifierInput = modal.querySelector('[data-role="attack-roll-modifier"]');
+  const visual = modal.querySelector('[data-role="attack-roll-visual"]');
+  const die1El = modal.querySelector('[data-role="attack-die-1"]');
+  const die2El = modal.querySelector('[data-role="attack-die-2"]');
+  const label1 = modal.querySelector('[data-role="attack-die-label-1"]');
+  const label2 = modal.querySelector('[data-role="attack-die-label-2"]');
+  const totalEl = modal.querySelector('[data-role="attack-dice-total"]');
+  const modEl = modal.querySelector('[data-role="attack-dice-modifier"]');
+  const resultEl = modal.querySelector('[data-role="attack-roll-result"]');
+  const weaponName = modal.dataset.weaponName || "Weapon";
+  const crackShotBonus = Number.parseInt(modal.dataset.crackShotBonus || "0", 10) || 0;
+  const luckBonus = Number.parseInt(modal.dataset.luckBonus || "0", 10) || 0;
+
+  const targetNumber = Number.parseInt(targetInput?.value, 10) || 15;
+  const baseModifier = Number.parseInt(modifierInput?.value, 10) || 0;
+  const modifier = baseModifier + crackShotBonus + luckBonus;
+  const finalDie1 = Math.floor(Math.random() * 6) + 1;
+  const finalDie2 = Math.floor(Math.random() * 6) + 1;
+  const diceTotal = finalDie1 + finalDie2;
+  const total = diceTotal + modifier;
+  const success = total >= targetNumber;
+
+  if (visual) visual.hidden = false;
+  if (visual) {
+    visual.classList.remove("is-success", "is-failure");
+  }
+  if (totalEl) totalEl.textContent = "";
+  if (modEl) modEl.textContent = "";
+  if (resultEl) resultEl.textContent = "";
+
+  attackRollState.isRolling = true;
+  const durationMs = playDiceRollSound(1400);
+  const startTime = Date.now();
+  const animate = () => {
+    const elapsed = Date.now() - startTime;
+    const progress = Math.min(1, elapsed / durationMs);
+    const animDie1 = Math.floor(Math.random() * 6) + 1;
+    const animDie2 = Math.floor(Math.random() * 6) + 1;
+    updateAttackDie(die1El, label1, animDie1);
+    updateAttackDie(die2El, label2, animDie2);
+
+    if (progress >= 1) {
+      updateAttackDie(die1El, label1, finalDie1);
+      updateAttackDie(die2El, label2, finalDie2);
+      if (totalEl) totalEl.textContent = `= ${diceTotal}`;
+      if (modEl) {
+        modEl.textContent = modifier ? `${modifier > 0 ? "+" : ""}${modifier}` : "";
+      }
+      if (resultEl) {
+        resultEl.textContent = `Total: ${total} vs Target ${targetNumber} • ${success ? "SUCCESS" : "FAILURE"}`;
+      }
+      if (visual) {
+        visual.classList.toggle("is-success", success);
+        visual.classList.toggle("is-failure", !success);
+      }
+      if (success) {
+        playSuccessSound();
+      } else {
+        playFailureSound();
+      }
+      attackRollState.lastAttackSuccess = success;
+      modal.dataset.attackRolled = "true";
+      if (!success) {
+        modal.dataset.rollFailed = "true";
+      }
+      appendChangeLogEntry(
+        `Attack roll (${weaponName}): 2d6 ${finalDie1}+${finalDie2} ${modifier >= 0 ? "+" : ""}${modifier} = ${total} vs ${targetNumber} (${success ? "Success" : "Failure"})`,
+        []
+      );
+      modal.dataset.luckLocked = "false";
+      updateLuckButtons(modal);
+      attackRollState.isRolling = false;
+      attackRollState.animationTimer = null;
+      return;
+    }
+    const nextDelay = Math.max(40, Math.floor(20 + 260 * progress * progress));
+    attackRollState.animationTimer = setTimeout(animate, nextDelay);
+  };
+  animate();
+};
+
+const openDamageRollModal = (section, weaponId) => {
+  if (!section) return;
+  const modal = section.querySelector('[data-role="damage-roll-modal"]');
+  if (!modal) return;
+  const rollButton = modal.querySelector('[data-role="damage-roll-button"]');
+  const titleEl = modal.querySelector('[data-role="damage-roll-title"]');
+  const visual = modal.querySelector('[data-role="damage-roll-visual"]');
+  const dieEl = modal.querySelector('[data-role="damage-die"]');
+  const labelEl = modal.querySelector('[data-role="damage-die-label"]');
+  const totalEl = modal.querySelector('[data-role="damage-dice-total"]');
+  const resultEl = modal.querySelector('[data-role="damage-roll-result"]');
+  const weapon = equipmentCatalog.Weapons.find((item) => item.id === weaponId);
+  const name = weapon?.name || "Damage Roll";
+  if (titleEl) {
+    titleEl.textContent = weapon?.emoji ? `${weapon.emoji} ${name}` : name;
+  }
+  if (visual) visual.hidden = true;
+  if (totalEl) totalEl.textContent = "";
+  if (resultEl) resultEl.textContent = "";
+  updateAttackDie(dieEl, labelEl, 1);
+  modal.dataset.damageTrack = weapon?.damageTrack || "";
+  modal.dataset.weaponName = weapon?.name || "Weapon";
+  modal.dataset.weaponSkill = weapon?.skill || "";
+  if (rollButton instanceof HTMLButtonElement) {
+    rollButton.disabled = false;
+    rollButton.onclick = () => startDamageRoll(modal);
+  }
+  modal.hidden = false;
+};
+
+const closeDamageRollModal = (section) => {
+  if (!section) return;
+  const modal = section.querySelector('[data-role="damage-roll-modal"]');
+  if (modal) {
+    modal.hidden = true;
+  }
+};
+
+const openCustomRollModal = () => {
+  const modal = document.querySelector('[data-role="custom-roll-modal"]');
+  if (!(modal instanceof HTMLElement)) return;
+  const diceSelect = modal.querySelector('[data-role="custom-roll-dice"]');
+  const baseInput = modal.querySelector('[data-role="custom-roll-base"]');
+  const situationalInput = modal.querySelector('[data-role="custom-roll-situational"]');
+  const targetInput = modal.querySelector('[data-role="custom-roll-target"]');
+  const noteInput = modal.querySelector('[data-role="custom-roll-note"]');
+  const visual = modal.querySelector('[data-role="custom-roll-visual"]');
+  const totalEl = modal.querySelector('[data-role="custom-dice-total"]');
+  const modEl = modal.querySelector('[data-role="custom-dice-modifier"]');
+  const resultEl = modal.querySelector('[data-role="custom-roll-result"]');
+  const die1El = modal.querySelector('[data-role="custom-die-1"]');
+  const die2El = modal.querySelector('[data-role="custom-die-2"]');
+  const label1 = modal.querySelector('[data-role="custom-die-label-1"]');
+  const label2 = modal.querySelector('[data-role="custom-die-label-2"]');
+  if (diceSelect instanceof HTMLSelectElement) diceSelect.value = "2d6";
+  if (baseInput instanceof HTMLInputElement) baseInput.value = "0";
+  if (situationalInput instanceof HTMLInputElement) situationalInput.value = "0";
+  if (targetInput instanceof HTMLInputElement) targetInput.value = "10";
+  if (noteInput instanceof HTMLTextAreaElement) noteInput.value = "";
+  if (visual) visual.hidden = true;
+  if (totalEl) totalEl.textContent = "";
+  if (modEl) modEl.textContent = "";
+  if (resultEl) resultEl.textContent = "";
+  updateAttackDie(die1El, label1, 1);
+  updateAttackDie(die2El, label2, 1);
+  modal.hidden = false;
+};
+
+const closeCustomRollModal = () => {
+  const modal = document.querySelector('[data-role="custom-roll-modal"]');
+  if (modal instanceof HTMLElement) {
+    modal.hidden = true;
+  }
+};
+
+const startCustomRoll = (modal) => {
+  if (!modal) return;
+  const diceSelect = modal.querySelector('[data-role="custom-roll-dice"]');
+  const baseInput = modal.querySelector('[data-role="custom-roll-base"]');
+  const situationalInput = modal.querySelector('[data-role="custom-roll-situational"]');
+  const targetInput = modal.querySelector('[data-role="custom-roll-target"]');
+  const noteInput = modal.querySelector('[data-role="custom-roll-note"]');
+  const visual = modal.querySelector('[data-role="custom-roll-visual"]');
+  const totalEl = modal.querySelector('[data-role="custom-dice-total"]');
+  const modEl = modal.querySelector('[data-role="custom-dice-modifier"]');
+  const resultEl = modal.querySelector('[data-role="custom-roll-result"]');
+  const die1El = modal.querySelector('[data-role="custom-die-1"]');
+  const die2El = modal.querySelector('[data-role="custom-die-2"]');
+  const label1 = modal.querySelector('[data-role="custom-die-label-1"]');
+  const label2 = modal.querySelector('[data-role="custom-die-label-2"]');
+
+  const dice = diceSelect instanceof HTMLSelectElement ? diceSelect.value : "2d6";
+  const baseMod = Number.parseInt(baseInput?.value, 10) || 0;
+  const situationalMod = Number.parseInt(situationalInput?.value, 10) || 0;
+  const target = Number.parseInt(targetInput?.value, 10) || 10;
+  const note = noteInput instanceof HTMLTextAreaElement ? noteInput.value.trim() : "";
+
+  const die1 = Math.floor(Math.random() * 6) + 1;
+  const die2 = dice === "1d6" ? 0 : Math.floor(Math.random() * 6) + 1;
+  const diceTotal = die1 + die2;
+  const modifier = baseMod + situationalMod;
+  const total = diceTotal + modifier;
+  const success = total >= target;
+
+  if (visual) visual.hidden = false;
+  if (totalEl) totalEl.textContent = `= ${diceTotal}`;
+  if (modEl) modEl.textContent = modifier ? `${modifier > 0 ? "+" : ""}${modifier}` : "";
+  if (resultEl) {
+    resultEl.textContent = `Total: ${total} vs Target ${target} • ${success ? "SUCCESS" : "FAILURE"}`;
+  }
+  updateAttackDie(die1El, label1, die1);
+  if (dice === "1d6") {
+    if (die2El) die2El.style.display = "none";
+  } else {
+    if (die2El) die2El.style.display = "";
+    updateAttackDie(die2El, label2, die2);
+  }
+
+  const noteText = note ? ` • ${note}` : "";
+  appendChangeLogEntry(
+    `Custom roll (${dice}): ${die1}${dice === "1d6" ? "" : `+${die2}`} ${modifier >= 0 ? "+" : ""}${modifier} = ${total} vs ${target} (${success ? "Success" : "Failure"})${noteText}`,
+    []
+  );
+};
+
+const startDamageRoll = (modal) => {
+  if (!modal) return;
+  const visual = modal.querySelector('[data-role="damage-roll-visual"]');
+  const dieEl = modal.querySelector('[data-role="damage-die"]');
+  const labelEl = modal.querySelector('[data-role="damage-die-label"]');
+  const totalEl = modal.querySelector('[data-role="damage-dice-total"]');
+  const resultEl = modal.querySelector('[data-role="damage-roll-result"]');
+  const weaponName = modal.dataset.weaponName || "Weapon";
+  const weaponSkillLabel = modal.dataset.weaponSkill || "";
+  const resolvedSkillName = resolveWeaponSkillName(weaponSkillLabel);
+  const ownedFeatures = getAllOwnedFeatures();
+  const hasStrongarm = ownedFeatures.has("strongarm");
+  const hasCrackShot = ownedFeatures.has("crack-shot");
+  const track = parseDamageTrack(modal.dataset.damageTrack);
+  const finalDie = Math.floor(Math.random() * 6) + 1;
+  const rollBonus =
+    (hasStrongarm && (resolvedSkillName === "Brawling" || resolvedSkillName === "Melee Weapons")
+      ? 1
+      : 0) +
+    (hasCrackShot && resolvedSkillName?.startsWith("Firearms") ? 1 : 0);
+  const adjustedRoll = Math.max(1, finalDie + rollBonus);
+  const baseTrackValue = track.length
+    ? track[Math.min(adjustedRoll - 1, track.length - 1)]
+    : adjustedRoll;
+  const trackValue = baseTrackValue;
+  if (visual) visual.hidden = false;
+  if (totalEl) totalEl.textContent = "";
+  if (resultEl) resultEl.textContent = "";
+  const durationMs = playDiceRollSound(1400);
+  const startTime = Date.now();
+  const animate = () => {
+    const elapsed = Date.now() - startTime;
+    const progress = Math.min(1, elapsed / durationMs);
+    const animDie = Math.floor(Math.random() * 6) + 1;
+    updateAttackDie(dieEl, labelEl, animDie);
+    if (progress >= 1) {
+      updateAttackDie(dieEl, labelEl, finalDie);
+      if (totalEl) {
+        totalEl.textContent = `= ${finalDie}${rollBonus ? ` ${rollBonus > 0 ? "+" : ""}${rollBonus}` : ""}`;
+      }
+      if (resultEl) {
+        const bonusText = rollBonus
+          ? ` (roll ${rollBonus > 0 ? "+" : ""}${rollBonus})`
+          : "";
+        resultEl.textContent = `Damage: ${trackValue}${bonusText} (track ${track.join("/") || "d6"})`;
+      }
+      appendChangeLogEntry(
+        `Damage roll (${weaponName}): d6 ${finalDie}${rollBonus ? ` ${rollBonus > 0 ? "+" : ""}${rollBonus}` : ""} → ${trackValue}`,
+        []
+      );
+      return;
+    }
+    setTimeout(animate, Math.max(40, Math.floor(20 + 260 * progress * progress)));
+  };
+  animate();
 };
 
 const setActiveTab = (tabId) => {
@@ -2613,6 +4818,9 @@ const setActiveTab = (tabId) => {
   refreshStatBadgeColors();
   renderSkills();
   renderFeatures();
+  if (tabId === "log") {
+    renderChangeLog();
+  }
 };
 
 // Tab button and NEW button listeners will be set up in window load event
@@ -2633,6 +4841,17 @@ const syncSelectValues = (role, value) => {
     updateFeaturePointsBadge();
     populateFeatureCategoryPicker();
   }
+  schedulePersist();
+};
+
+const syncNameValues = (value) => {
+  const nextName = value || "";
+  characterName = nextName;
+  getNameInputs().forEach((input) => {
+    if (input.value !== nextName) {
+      input.value = nextName;
+    }
+  });
   schedulePersist();
 };
 
@@ -2662,6 +4881,15 @@ const attachBackgroundListeners = () => {
   });
 };
 
+const attachNameListeners = () => {
+  getNameInputs().forEach((input) => {
+    input.addEventListener("input", () => {
+      if (input.disabled) return;
+      syncNameValues(input.value);
+    });
+  });
+};
+
 const attachGradeListeners = () => {
   getGradeSelects().forEach((select) => {
     select.addEventListener("change", () => {
@@ -2675,7 +4903,7 @@ const mirrorTabPanels = () => {
   const sheetPanel = document.querySelector('[data-tab-panel="sheet"]');
   if (!sheetPanel) return;
   tabPanels.forEach((panelEl) => {
-    if (panelEl.dataset.tabPanel !== "sheet") {
+    if (panelEl.dataset.tabPanel !== "sheet" && panelEl.dataset.tabPanel !== "log") {
       panelEl.innerHTML = sheetPanel.innerHTML;
     }
   });
@@ -2683,11 +4911,16 @@ const mirrorTabPanels = () => {
   renderSkills();
 };
 
-const resetCharacter = () => {
+const resetCharacter = (skipPersist = false) => {
   purchasedSkills.clear();
   skillRanks.clear();
   purchasedFeatures.clear();
   featureSelections.clear();
+  equippedWeapons = [];
+  equippedArmor = [];
+  equippedGeneral = [];
+  hyposprayCharges = HYPO_SPRAY_MAX_CHARGES;
+  syncNameValues("");
   if (defaultGradeValue) {
     syncSelectValues("grade", defaultGradeValue);
   }
@@ -2698,9 +4931,12 @@ const resetCharacter = () => {
     getBackgroundSelects()[0]?.value || defaultBackgroundValue
   );
   renderSkills();
+  renderEquipment();
   updateSkillPointsBadge();
   updateFeaturePointsBadge();
-  schedulePersist();
+  if (!skipPersist) {
+    schedulePersist();
+  }
 };
 
 const buildCharacterData = () => {
@@ -2709,6 +4945,7 @@ const buildCharacterData = () => {
 
   return {
     version: 1,
+    characterName,
     grade: gradeSelect?.value || defaultGradeValue,
     background: backgroundSelect?.value || defaultBackgroundValue,
     baseCharacteristics: { ...baseCharacteristics },
@@ -2718,7 +4955,10 @@ const buildCharacterData = () => {
     purchasedFeatures: Array.from(purchasedFeatures),
     featureSelections: Array.from(featureSelections.entries()),
     statState: Array.from(statState.entries()),
-    currentBackgroundName,
+    equippedWeapons: [...equippedWeapons],
+    equippedGeneral: [...equippedGeneral],
+    equippedArmor: [...equippedArmor],
+    hyposprayCharges,
   };
 };
 
@@ -2728,6 +4968,9 @@ const applyCharacterData = async (characterData) => {
   }
 
   // Restore basic values
+  if (characterData.characterName !== undefined) {
+    syncNameValues(characterData.characterName || "");
+  }
   if (characterData.grade) {
     syncSelectValues("grade", characterData.grade);
   }
@@ -2762,6 +5005,32 @@ const applyCharacterData = async (characterData) => {
         purchasedFeatures.add(feature);
       });
     }
+  if (characterData.equippedWeapons) {
+    equippedWeapons = Array.isArray(characterData.equippedWeapons)
+      ? [...characterData.equippedWeapons]
+      : [];
+  } else {
+    equippedWeapons = [];
+  }
+  if (characterData.equippedGeneral) {
+    equippedGeneral = Array.isArray(characterData.equippedGeneral)
+      ? [...characterData.equippedGeneral]
+      : [];
+  } else {
+    equippedGeneral = [];
+  }
+  if (characterData.equippedArmor) {
+    equippedArmor = Array.isArray(characterData.equippedArmor)
+      ? [...characterData.equippedArmor]
+      : [];
+  } else {
+    equippedArmor = [];
+  }
+  if (Number.isFinite(characterData.hyposprayCharges)) {
+    hyposprayCharges = Math.max(0, Number(characterData.hyposprayCharges));
+  } else {
+    hyposprayCharges = HYPO_SPRAY_MAX_CHARGES;
+  }
   if (characterData.featureSelections) {
     featureSelections.clear();
     characterData.featureSelections.forEach(([key, value]) => {
@@ -2775,15 +5044,13 @@ const applyCharacterData = async (characterData) => {
     });
   }
 
-  if (characterData.currentBackgroundName) {
-    currentBackgroundName = characterData.currentBackgroundName;
-  }
 
   // Update UI
   await updateStatsForBackground(
     getBackgroundSelects()[0]?.value || defaultBackgroundValue
   );
   renderSkills();
+  renderEquipment();
   updateSkillPointsBadge();
   updateFeaturePointsBadge();
 };
@@ -2921,8 +5188,131 @@ const loadCharacter = async () => {
   }
 };
 
-document.addEventListener("click", (event) => {
+const handleStatRollBadge = (target) => {
+  const statRollBadge = target.closest('[data-roll-role="stat-roll-badge"]');
+  if (!statRollBadge || activePanelKey() === "edit") return false;
+  const statName = String(
+    statRollBadge.dataset.stat || statRollBadge.dataset.statName || ""
+  )
+    .trim()
+    .toUpperCase();
+  if (statName === "LUCK") {
+    openLuckTestModal();
+    return true;
+  }
+  if (statName === "BODY" || statName === "MIND") {
+    openStatRollModal(statName);
+    return true;
+  }
+  return false;
+};
+
+const handleSkillRollBadge = (target) => {
+  const skillRollBadge = target.closest('[data-roll-role="skill-roll-badge"]');
+  if (!skillRollBadge || activePanelKey() !== "sheet") return false;
+  const skillName = (skillRollBadge.dataset.skill || "").trim();
+  if (!skillName) return false;
+  openSkillRollModal(skillName);
+  return true;
+};
+
+const attachStatRollListeners = () => {
+  const badges = Array.from(
+    document.querySelectorAll('[data-roll-role="stat-roll-badge"]')
+  );
+  badges.forEach((badge) => {
+    if (!(badge instanceof HTMLElement)) return;
+    if (badge.dataset.rollListenerAttached === "true") return;
+    badge.dataset.rollListenerAttached = "true";
+    badge.addEventListener(
+      "pointerdown",
+      (event) => {
+        if (activePanelKey() === "edit") return;
+        event.preventDefault();
+        event.stopPropagation();
+        handleStatRollBadge(event.target instanceof HTMLElement ? event.target : badge);
+      },
+      true
+    );
+    badge.addEventListener(
+      "click",
+      (event) => {
+        if (activePanelKey() === "edit") return;
+        event.preventDefault();
+        event.stopPropagation();
+        handleStatRollBadge(event.target instanceof HTMLElement ? event.target : badge);
+      },
+      true
+    );
+  });
+};
+
+const attachSkillRollListeners = () => {
+  const badges = Array.from(
+    document.querySelectorAll('[data-roll-role="skill-roll-badge"]')
+  );
+  badges.forEach((badge) => {
+    if (!(badge instanceof HTMLElement)) return;
+    if (badge.dataset.rollListenerAttached === "true") return;
+    badge.dataset.rollListenerAttached = "true";
+    badge.addEventListener(
+      "pointerdown",
+      (event) => {
+        if (activePanelKey() !== "sheet") return;
+        event.preventDefault();
+        event.stopPropagation();
+        handleSkillRollBadge(event.target instanceof HTMLElement ? event.target : badge);
+      },
+      true
+    );
+    badge.addEventListener(
+      "click",
+      (event) => {
+        if (activePanelKey() !== "sheet") return;
+        event.preventDefault();
+        event.stopPropagation();
+        handleSkillRollBadge(event.target instanceof HTMLElement ? event.target : badge);
+      },
+      true
+    );
+  });
+};
+
+document.addEventListener("pointerdown", (event) => {
   const target = event.target;
+  if (!(target instanceof HTMLElement)) return;
+  const equipmentCategory = target.closest('[data-role="equipment-category"]');
+  if (equipmentCategory) {
+    const category = equipmentCategory.dataset.category;
+    const section =
+      equipmentCategory.closest(".equipment-section") || getActiveEquipmentSection();
+    console.debug("[Equipment] Pointerdown:", { category, hasSection: !!section });
+    openEquipmentPicker(section, category);
+  }
+  if (handleStatRollBadge(target)) return;
+  if (handleSkillRollBadge(target)) return;
+});
+
+document.addEventListener(
+  "click",
+  (event) => {
+    const target = event.target;
+    if (!(target instanceof HTMLElement)) return;
+    if (handleStatRollBadge(target)) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+    if (handleSkillRollBadge(target)) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+  },
+  true
+);
+
+document.addEventListener("click", (event) => {
+  const rawTarget = event.target;
+  const target = rawTarget instanceof HTMLElement ? rawTarget : rawTarget?.parentElement;
   if (!(target instanceof HTMLElement)) return;
   
   // Don't interfere with tab button clicks
@@ -3016,7 +5406,17 @@ document.addEventListener("click", (event) => {
     if (featureId) {
       const select = picker.querySelector('[data-role="enemy-type-select"]');
       if (select && select.value) {
-        purchaseFeature(featureId, select.value);
+        let selectionValue = select.value;
+        if (select.dataset.role === "enemy-type-select") {
+          const species = window.prompt(
+            "Enter the specific Star Trek species you are an enemy of:"
+          );
+          if (!species || !species.trim()) {
+            return;
+          }
+          selectionValue = `${selectionValue} (Species: ${species.trim()})`;
+        }
+        purchaseFeature(featureId, selectionValue);
         closeFeatureSelectionPopup();
         // Also close the feature list picker
         const section = picker.closest(".features-section");
@@ -3145,15 +5545,163 @@ document.addEventListener("click", (event) => {
     }
     return;
   }
+  const equipmentCategory = target.closest('[data-role="equipment-category"]');
+  if (equipmentCategory) {
+    const category = equipmentCategory.dataset.category;
+    const section =
+      equipmentCategory.closest(".equipment-section") || getActiveEquipmentSection();
+    console.debug("[Equipment] Delegated click:", { category, hasSection: !!section });
+    openEquipmentPicker(section, category);
+    return;
+  }
+  const equipmentRemove = target.closest('[data-role="equipment-remove"]');
+  if (equipmentRemove) {
+    event.preventDefault();
+    event.stopPropagation();
+    const itemId = equipmentRemove.dataset.itemId;
+    const category = equipmentRemove.dataset.category;
+    if (itemId && category === "Weapons") {
+      equippedWeapons = equippedWeapons.filter((entry) => entry !== itemId);
+    }
+    if (itemId && category === "General") {
+      equippedGeneral = equippedGeneral.filter((entry) => entry !== itemId);
+    }
+    if (itemId && category === "Armor") {
+      equippedArmor = equippedArmor.filter((entry) => entry !== itemId);
+    }
+    renderEquipment();
+    renderSkills();
+    schedulePersist();
+    return;
+  }
+  const weaponBadge = target.closest('[data-role="weapon-badge"]');
+  if (weaponBadge) {
+    const weaponId = weaponBadge.dataset.weaponId;
+    const section =
+      weaponBadge.closest(".equipment-section") || getActiveEquipmentSection();
+    openWeaponDetail(section, weaponId);
+    return;
+  }
+  const generalBadge = target.closest('[data-role="general-badge"]');
+  if (generalBadge) {
+    const itemId = generalBadge.dataset.itemId;
+    if (itemId === "hypospray") {
+      if (hyposprayCharges <= 0) {
+        alert("Hypospray has no charges left.");
+        return;
+      }
+      openHyposprayRollModal();
+    }
+    return;
+  }
+  const equipmentItem = target.closest('[data-role="equipment-item"]');
+  if (equipmentItem) {
+    const itemId = equipmentItem.dataset.itemId;
+    const category = equipmentItem.dataset.category;
+    if (itemId && category === "Weapons" && !equippedWeapons.includes(itemId)) {
+      equippedWeapons.push(itemId);
+    }
+    if (itemId && category === "General" && !equippedGeneral.includes(itemId)) {
+      equippedGeneral.push(itemId);
+      if (itemId === "hypospray" && !Number.isFinite(hyposprayCharges)) {
+        hyposprayCharges = HYPO_SPRAY_MAX_CHARGES;
+      }
+    }
+    if (itemId && category === "Armor" && !equippedArmor.includes(itemId)) {
+      equippedArmor.push(itemId);
+    }
+    if (itemId) {
+      renderEquipment();
+      renderSkills();
+      schedulePersist();
+    }
+    const picker = equipmentItem.closest('[data-role="equipment-picker"]');
+    if (picker) {
+      picker.hidden = true;
+    }
+    return;
+  }
+  const equipmentDone = target.closest('[data-role="equipment-done"]');
+  if (equipmentDone) {
+    const picker = equipmentDone.closest('[data-role="equipment-picker"]');
+    if (picker) {
+      picker.hidden = true;
+    }
+    return;
+  }
+  const weaponDetailClose = target.closest('[data-role="weapon-detail-close"]');
+  if (weaponDetailClose) {
+    const section = weaponDetailClose.closest(".equipment-section");
+    closeWeaponDetail(section);
+    return;
+  }
+  const weaponDetailRoll = target.closest('[data-role="weapon-detail-roll-button"]');
+  if (weaponDetailRoll) {
+    const section = weaponDetailRoll.closest(".equipment-section");
+    const modal = section?.querySelector('[data-role="weapon-detail-modal"]');
+    const weaponId = weaponDetailRoll.dataset.weaponId || modal?.dataset?.weaponId || "";
+    openAttackRollModal(section, weaponId);
+    return;
+  }
+  const weaponDetailDamage = target.closest('[data-role="weapon-detail-damage-button"]');
+  if (weaponDetailDamage) {
+    const section = weaponDetailDamage.closest(".equipment-section");
+    const modal = section?.querySelector('[data-role="weapon-detail-modal"]');
+    const weaponId = weaponDetailDamage.dataset.weaponId || modal?.dataset?.weaponId || "";
+    openDamageRollModal(section, weaponId);
+    return;
+  }
+  const attackRollButton = target.closest('[data-role="attack-roll-button"]');
+  if (attackRollButton) {
+    const modal = attackRollButton.closest('[data-role="attack-roll-modal"]');
+    startAttackRoll(modal);
+    return;
+  }
+  const attackRollLuck = target.closest('[data-role="attack-roll-luck"]');
+  if (attackRollLuck) {
+    if (!window.confirm("Using LUCK will cost 1 LUCK whether you succeed or fail.")) {
+      return;
+    }
+    const modal = attackRollLuck.closest('[data-role="attack-roll-modal"]');
+    startLuckTest(modal, "pre");
+    return;
+  }
+  const attackRollLuckTest = target.closest('[data-role="attack-roll-luck-test"]');
+  if (attackRollLuckTest) {
+    if (!window.confirm("Using LUCK will cost 1 LUCK whether you succeed or fail.")) {
+      return;
+    }
+    const modal = attackRollLuckTest.closest('[data-role="attack-roll-modal"]');
+    startLuckTest(modal, "reroll");
+    return;
+  }
+  const attackRollClose = target.closest('[data-role="attack-roll-close"]');
+  if (attackRollClose) {
+    const section = attackRollClose.closest(".equipment-section");
+    closeAttackRollModal(section);
+    return;
+  }
+  const damageRollButton = target.closest('[data-role="damage-roll-button"]');
+  if (damageRollButton) {
+    const modal = damageRollButton.closest('[data-role="damage-roll-modal"]');
+    startDamageRoll(modal);
+    return;
+  }
+  const damageRollClose = target.closest('[data-role="damage-roll-close"]');
+  if (damageRollClose) {
+    const section = damageRollClose.closest(".equipment-section");
+    closeDamageRollModal(section);
+    return;
+  }
   // Handle left click on stat badge (increase) - BODY, MIND, LUCK only
   const statBadge = target.closest('[data-role="stat-badge-adjustable"]');
-  if (statBadge && activePanelKey() === "edit") {
+  if (statBadge && (activePanelKey() === "edit" || activePanelKey() === "level-up")) {
     const stat = statBadge.dataset.stat;
     if (!stat) return;
     const base = baseCharacteristics[stat] ?? 0;
     const currentInitial = getStatInitial(stat);
-    const cost = statCostsByStat[stat] ?? 0;
     const currentGrade = getGradeSelects()[0]?.value || "Uncommon";
+    const cost = statCostsByStat[stat] ?? 0;
     const totalPoints = statPointsByGrade[currentGrade] ?? 0;
     const spentPoints = getSpentPoints();
     const remaining = totalPoints - spentPoints;
@@ -3163,10 +5711,19 @@ document.addEventListener("click", (event) => {
       {};
     const bonusCap = gradeBonuses[stat] ?? gradeBonuses.MIND ?? 0;
     const maxValue = base + bonusCap;
-    
-    if (remaining < cost || currentInitial >= maxValue) return;
-    
-    setStatState(stat, currentInitial + 1);
+
+    if (currentInitial >= maxValue) return;
+
+    if (activePanelKey() === "level-up") {
+      const xpCost = (currentInitial + 1) * 20;
+      const currentXp = getXpCurrent();
+      if (currentXp < xpCost) return;
+      setXpCurrent(currentXp - xpCost);
+      setStatState(stat, currentInitial + 1);
+    } else {
+      if (remaining < cost) return;
+      setStatState(stat, currentInitial + 1);
+    }
     recomputeDerivedStats();
     updateStatPointsBadges();
     updateAdjusterStates();
@@ -3176,18 +5733,145 @@ document.addEventListener("click", (event) => {
 });
 
 document.addEventListener("click", (event) => {
-  const target = event.target;
+  const rawTarget = event.target;
+  const target = rawTarget instanceof HTMLElement ? rawTarget : rawTarget?.parentElement;
   if (!(target instanceof HTMLElement)) return;
   
+  const statRollButton = target.closest('[data-role="stat-roll-button"]');
+  if (statRollButton) {
+    const modal = statRollButton.closest('[data-role="stat-roll-modal"]');
+    startStatRoll(modal);
+    return;
+  }
+  const statRollLuck = target.closest('[data-role="stat-roll-luck"]');
+  if (statRollLuck) {
+    if (!window.confirm("Using LUCK will cost 1 LUCK whether you succeed or fail.")) {
+      return;
+    }
+    const modal = statRollLuck.closest('[data-role="stat-roll-modal"]');
+    startStatLuckTest(modal, "pre");
+    return;
+  }
+  const statRollLuckTest = target.closest('[data-role="stat-roll-luck-test"]');
+  if (statRollLuckTest) {
+    if (!window.confirm("Using LUCK will cost 1 LUCK whether you succeed or fail.")) {
+      return;
+    }
+    const modal = statRollLuckTest.closest('[data-role="stat-roll-modal"]');
+    const mode = modal?.dataset?.luckOnly === "true" ? "single" : "reroll";
+    startStatLuckTest(modal, mode);
+    return;
+  }
+  const statRollClose = target.closest('[data-role="stat-roll-close"]');
+  if (statRollClose) {
+    closeStatRollModal();
+    return;
+  }
+  const customRollOpen = target.closest('[data-role="custom-roll-open"]');
+  if (customRollOpen) {
+    openCustomRollModal();
+    return;
+  }
+  const customRollClose = target.closest('[data-role="custom-roll-close"]');
+  if (customRollClose) {
+    closeCustomRollModal();
+    return;
+  }
+  const customRollButton = target.closest('[data-role="custom-roll-button"]');
+  if (customRollButton) {
+    const modal = customRollButton.closest('[data-role="custom-roll-modal"]');
+    startCustomRoll(modal);
+    return;
+  }
+  const sheetSkillCategoryBadge = target.closest('[data-role="skill-category-badge-sheet"]');
+  if (sheetSkillCategoryBadge && activePanelKey() === "sheet") {
+    const category = sheetSkillCategoryBadge.dataset.category;
+    if (category) {
+      openSheetSkillCategoryModal(category);
+    }
+    return;
+  }
+  const sheetSkillCategoryClose = target.closest(
+    '[data-role="sheet-skill-category-close"]'
+  );
+  if (sheetSkillCategoryClose) {
+    const modal = sheetSkillCategoryClose.closest(
+      '[data-role="sheet-skill-category-modal"]'
+    );
+    if (modal) modal.hidden = true;
+    return;
+  }
+  const sheetSkillRoll = target.closest('[data-role="sheet-skill-roll"]');
+  if (sheetSkillRoll) {
+    const skillName = sheetSkillRoll.dataset.skill;
+    if (skillName) {
+      const modal = sheetSkillRoll.closest(
+        '[data-role="sheet-skill-category-modal"]'
+      );
+      if (modal) modal.hidden = true;
+      openSkillRollModal(skillName);
+    }
+    return;
+  }
+  const derivedStatBadge = target.closest('[data-role="derived-stat-badge"]');
+  if (derivedStatBadge) {
+    const statName = derivedStatBadge.dataset.stat;
+    if (statName === "HEALTH" || statName === "POWER") {
+      openDerivedStatActionModal(statName);
+    }
+    return;
+  }
+  const derivedStatActionClose = target.closest('[data-role="derived-stat-action-close"]');
+  if (derivedStatActionClose) {
+    closeDerivedStatActionModal();
+    return;
+  }
+  const derivedStatAmountClose = target.closest('[data-role="derived-stat-amount-close"]');
+  if (derivedStatAmountClose) {
+    closeDerivedStatAmountModal();
+    return;
+  }
+  const derivedStatAction = target.closest('[data-role="derived-stat-action"]');
+  if (derivedStatAction) {
+    const modal = document.querySelector('[data-role="derived-stat-action-modal"]');
+    const statName = modal?.dataset?.stat || "";
+    const action = derivedStatAction.dataset.action || "";
+    if (statName && (action === "damage" || action === "healing")) {
+      closeDerivedStatActionModal();
+      openDerivedStatAmountModal(statName, action);
+    }
+    return;
+  }
+  const derivedStatAmount = target.closest('[data-role="derived-stat-amount"]');
+  if (derivedStatAmount) {
+    const modal = document.querySelector('[data-role="derived-stat-amount-modal"]');
+    const statName = modal?.dataset?.stat || "";
+    const action = modal?.dataset?.action || "";
+    const amount = Number.parseInt(derivedStatAmount.dataset.amount || "0", 10) || 0;
+    if (statName && (action === "damage" || action === "healing") && amount > 0) {
+      applyDerivedStatChange(statName, action, amount);
+    }
+    closeDerivedStatAmountModal();
+    return;
+  }
   // Handle left click on skill badge (increase)
   const skillBadge = target.closest('[data-role="skill-badge"]');
-  if (skillBadge && activePanelKey() === "edit") {
+  if (skillBadge && (activePanelKey() === "edit" || activePanelKey() === "level-up")) {
     const skillName = skillBadge.dataset.skill;
     if (!skillName) return;
     const currentRank = skillRanks.get(skillName) || 0;
     const increaseStatus = canIncreaseSkill(skillName, currentRank);
     if (!increaseStatus.allowed) return;
-    skillRanks.set(skillName, currentRank + 1);
+    if (activePanelKey() === "level-up") {
+      const targetRank = currentRank + 1;
+      const xpCost = targetRank === 1 ? 20 : targetRank * 10;
+      const currentXp = getXpCurrent();
+      if (currentXp < xpCost) return;
+      setXpCurrent(currentXp - xpCost);
+      skillRanks.set(skillName, targetRank);
+    } else {
+      skillRanks.set(skillName, currentRank + 1);
+    }
     purchasedSkills.add(skillName);
     renderSkills();
     updateSkillPointsBadge();
@@ -3231,6 +5915,13 @@ document.addEventListener("contextmenu", (event) => {
     if (currentRank <= 0) return;
     
     const newRank = currentRank - 1;
+    const nextRanks = new Map(skillRanks);
+    if (newRank > 0) {
+      nextRanks.set(skillName, newRank);
+    } else {
+      nextRanks.delete(skillName);
+    }
+    if (!isSkillPyramidValid(nextRanks)) return;
     skillRanks.set(skillName, newRank);
     purchasedSkills.add(skillName);
     
@@ -3275,6 +5966,13 @@ document.addEventListener("contextmenu", (event) => {
     if (currentRank <= 0) return;
     
     const newRank = currentRank - 1;
+    const nextRanks = new Map(skillRanks);
+    if (newRank > 0) {
+      nextRanks.set(skillName, newRank);
+    } else {
+      nextRanks.delete(skillName);
+    }
+    if (!isSkillPyramidValid(nextRanks)) return;
     skillRanks.set(skillName, newRank);
     
     // If rank is now 0, check if we should delete the skill

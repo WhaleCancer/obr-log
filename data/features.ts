@@ -128,7 +128,7 @@ export const features: Feature[] = [
         category: "Combat",
         emoji: "🤲",
         costType: "feature-points",
-        cost: 2
+        cost: 4
     },
     {
         id: "armour-training",
@@ -138,7 +138,7 @@ export const features: Feature[] = [
         category: "Combat",
         emoji: "🛡️",
         costType: "feature-points",
-        cost: 2
+        cost: 4
     },
     {
         id: "combat-reactions",
@@ -187,6 +187,16 @@ export const features: Feature[] = [
         }
     },
     {
+        id: "carouser",
+        name: "Carouser",
+        type: "talent",
+        description: "The Hero gains a +2 bonus on BODY checks involving drugs or alcohol, +2 bonus on LUCK checks in games of chance, and a +2 bonus on skill checks to seduce (usually Bargain).",
+        category: "Speech",
+        emoji: "🍻",
+        costType: "feature-points",
+        cost: 2
+    },
+    {
         id: "strongarm",
         name: "Strongarm",
         type: "talent",
@@ -194,7 +204,7 @@ export const features: Feature[] = [
         category: "Combat",
         emoji: "💪",
         costType: "feature-points",
-        cost: 2
+        cost: 4
     },
     {
         id: "tough",
@@ -204,7 +214,7 @@ export const features: Feature[] = [
         category: "Combat",
         emoji: "🛡️",
         costType: "feature-points",
-        cost: 2,
+        cost: 4,
         healthMultiplier: 3
     },
     {
@@ -285,7 +295,7 @@ export const features: Feature[] = [
         category: "Psionic",
         emoji: "⚡",
         costType: "feature-points",
-        cost: 2
+        cost: 4
     },
     {
         id: "focused",
@@ -295,7 +305,7 @@ export const features: Feature[] = [
         category: "Psionic",
         emoji: "🎯",
         costType: "feature-points",
-        cost: 2
+        cost: 4
     },
     {
         id: "power-leech",
@@ -305,7 +315,7 @@ export const features: Feature[] = [
         category: "Psionic",
         emoji: "🧛",
         costType: "feature-points",
-        cost: 2
+        cost: 4
     },
     {
         id: "linguist",
@@ -347,6 +357,46 @@ export const features: Feature[] = [
         description: "This Talent sets the Hero apart in a seemingly mundane and boring way. They can carry an awful lot, for an awful long time. This Hero can now carry 20 normal items, with an extra two items per point in the Strength Special Skill. Heroes with the Packhorse Talent are often very popular with comrades on long treks through difficult terrain!",
         category: "Movement",
         emoji: "🐴",
+        costType: "feature-points",
+        cost: 2
+    },
+    {
+        id: "jury-rigger",
+        name: "Jury Rigger",
+        type: "talent",
+        description: "A Hero with this talent is able to make just about any tool or basic mechanism given a few parts and basic tools, and can also force a damaged system to work, even if at minimum capacity. This talent is not a replacement for the engineering special skill for proper repairs or maintenance, although this talent does allow the creation of some outrageous (and short lived) inventions. Any mechanism made or repaired by this talent will work just long enough to fulfil its purpose before failing completely.",
+        category: "Knowledge",
+        emoji: "🛠️",
+        costType: "feature-points",
+        cost: 2
+    },
+    {
+        id: "learned",
+        name: "Learned",
+        type: "talent",
+        description: "A Hero with this talent has had an extensive education, and spends most of their spare time reading and learning. They know a huge amount of...stuff, and gain a +2 bonus to all knowledge tests made against special skills.",
+        category: "Knowledge",
+        emoji: "📚",
+        costType: "feature-points",
+        cost: 2
+    },
+    {
+        id: "survivor",
+        name: "Survivor",
+        type: "talent",
+        description: "This Hero seems to have an almost supernatural ability to stay alive in difficult environments. As long as it is possible to live (breathable atmosphere, source of food and water) the character will cling on and find whatever is needed. If the Hero also has the Survival special skill, they can support an extra person per point in the special skill without needing to roll.",
+        category: "Knowledge",
+        emoji: "🧭",
+        costType: "feature-points",
+        cost: 2
+    },
+    {
+        id: "technical-genius",
+        name: "Technical Genius",
+        type: "talent",
+        description: "This Hero may sacrifice a point of LUCK to gain a +4 bonus to one technical skill roll (Science, Engineering, Medical).",
+        category: "Science",
+        emoji: "🧠",
         costType: "feature-points",
         cost: 2
     },

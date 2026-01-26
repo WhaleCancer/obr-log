@@ -58,7 +58,7 @@ export const backgrounds: Record<string, Background> = {
             BODY: 0,
             HEALTH: 0,
             LUCK: 0,
-            MIND: 0,
+            MIND: 1,
             ATTACKS: 1
         },
         skillModifiers: [
@@ -94,7 +94,7 @@ export const backgrounds: Record<string, Background> = {
         type: "Humanoid (Andorian)",
         description: "The Andorians are a warp-capable humanoid species from the moon Andoria, capital of the Andorian Empire, in the Alpha Quadrant. In 2161, their homeworld became a founding member of the United Federation of Planets.\n\nStarting SKILL: 4\nStarting HEALTH: 10\nStarting LUCK: 8\n##### Andorian Special Skills\nAndorian have the following Special Skills.\n* Combat Skills / [[Dodge]] (1 rank) \n* Combat Skills / [[Personal Combat]] (1 rank) \n* Combat Skills / [[1. Starfleet Officer's Handbook/Special Skills/Ground Combat Skills/Tactics]] (1 rank)\n* Social Sciences / [[Andorian Culture and History (special skill)]] (1 rank)\n* Languages / [[Andorii (language)]] (3 ranks)\n##### Special Skills\nAndorian officers in Star Fleet have the following Special Skills:\n* Life Sciences / 1 rank in any 1 [[Sciences]] \n* Medical Science / [[Andorian (general medicine)]] (1 rank) \n* Physical Sciences / 1 rank in any 1 [[Physical Sciences]] \n* Planetary Sciences / 1 rank in any 1 [[Planetary Sciences]] \n* Social Sciences / 1 rank in any 1 [[Social Sciences]] \n* Social Sciences / [[History]] (1 rank)\n* Space Sciences / 1 rank in any 1 [[Space Sciences]]\n* Sports / 1 rank in any 1 [[Sports]]\n* Languages / [[Federation Standard (language)]] (3 ranks)",
         statModifiers: {
-            BODY: 0,
+            BODY: 1,
             HEALTH: 0,
             LUCK: 0,
             MIND: 0,
@@ -105,7 +105,7 @@ export const backgrounds: Record<string, Background> = {
             { name: "Melee Weapons", section: "combat", modifier: 1 }
         ],
         backgroundTalents: ["Federation (Affiliation)"],
-        features: ["brain-andorian", "eye-left-normal", "eye-right-normal", "ear-left-humanoid", "ear-right-universal-translator", "nose-humanoid", "teeth-humanoid", "skull-humanoid", "antennae-andorian-left", "antennae-andorian-right", "arm-left-humanoid", "arm-right-humanoid", "leg-left-humanoid", "leg-right-humanoid", "hand-left-humanoid", "hand-right-humanoid", "foot-left-humanoid", "foot-right-humanoid"],
+        features: ["combat-reactions"],
         
         
     },
@@ -414,15 +414,16 @@ export const backgrounds: Record<string, Background> = {
         statModifiers: {
             BODY: 0,
             HEALTH: 0,
-            LUCK: 0,
+            LUCK: 1,
             MIND: 0,
             ATTACKS: 1
         },
         skillModifiers: [
-            { name: "Run", section: "movement", modifier: 1 },
+            { name: "English", section: "knowledge", modifier: 4 },
             { name: "Swim", section: "movement", modifier: 1 },
-            { name: "Dodge", section: "movement", modifier: 1 },
-            { name: "Brawling", section: "combat", modifier: 1 }
+            { name: "Run", section: "movement", modifier: 1 },
+            { name: "Bargain", section: "speech", modifier: 1 },
+            { name: "Leadership", section: "speech", modifier: 1 }
         ],
         backgroundTalents: ["Federation (Affiliation)"],
         features: [],
@@ -669,17 +670,7 @@ export const backgrounds: Record<string, Background> = {
             { name: "Vulcan", section: "knowledge", modifier: 4 }
         ],
         backgroundTalents: ["Federation (Affiliation)"],
-        features: [
-            "arms-humanoid",
-            "legs-humanoid",
-            "hands-humanoid",
-            "skull-humanoid",
-            "teeth-humanoid",
-            "nose-humanoid",
-            "ears-vulcanoid",
-            "blood-green",
-            "logical"
-        ],
+        features: ["strongarm"],
         
          // Vulcans from desert planet, strong, logical
     }
