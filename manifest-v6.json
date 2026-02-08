@@ -1,0 +1,15 @@
+{
+  "name": "AFF Shared Log",
+  "version": "0.1.5",
+  "manifest_version": 1,
+  "icon": "https://whalecancer.github.io/obr-log/notebook.png?v=6",
+  "author": "AFFWiki",
+  "description": "Shared room log for AFF and other extensions. All players and GM see loggable actions in one place.",
+  "action": {
+    "title": "Shared Log",
+    "icon": "https://whalecancer.github.io/obr-log/notebook.png?v=6",
+    "popover": "https://whalecancer.github.io/obr-log/index.html?v=10&logApi=https://localhost:8787",
+    "height": 500,
+    "width": 420
+  }
+}

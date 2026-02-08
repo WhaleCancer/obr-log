@@ -10,7 +10,7 @@
   const MAX_ENTRIES = 300;
   const LOG_PREFIX = "[AFF Shared Log]";
   const MAX_DEBUG_LINES = 200;
-  const LOG_API_BASE = (new URLSearchParams(window.location.search).get("logApi") || "http://localhost:8787").trim();
+  const LOG_API_BASE = (new URLSearchParams(window.location.search).get("logApi") || "https://localhost:8787").trim();
   const LOG_API_ENABLED = LOG_API_BASE !== "off";
 
   function getLogFromMetadata(metadata) {
