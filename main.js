@@ -6,6 +6,7 @@
 
 (function () {
   const SHARED_LOG_KEY = "affSharedLog";
+  const SHARED_LOG_PLAYER_KEY = "affSharedLogPlayer";
   const MAX_ENTRIES = 300;
   const LOG_PREFIX = "[AFF Shared Log]";
   const MAX_DEBUG_LINES = 200;
@@ -53,9 +54,41 @@
     }
   }
 
-  function render(metadata) {
+  function mergeEntries(allEntries) {
+    const map = new Map();
+    allEntries.forEach((entry) => {
+      if (!entry) return;
+      const id = entry.id || `${entry.playerId || "player"}-${entry.ts || 0}-${entry.text || ""}`;
+      if (!map.has(id)) map.set(id, entry);
+    });
+    return Array.from(map.values()).sort((a, b) => (a.ts || 0) - (b.ts || 0));
+  }
+
+  async function getRoomEntries(OBR) {
+    if (!OBR?.room?.getMetadata) return [];
+    const metadata = await OBR.room.getMetadata();
     const { entries } = getLogFromMetadata(metadata);
-    renderEntries(entries);
+    return Array.isArray(entries) ? entries : [];
+  }
+
+  async function getPlayerEntries(OBR) {
+    if (!OBR?.party?.getPlayers) return [];
+    const players = await OBR.party.getPlayers();
+    const entries = [];
+    players.forEach((player) => {
+      const playerEntries = player?.metadata?.[SHARED_LOG_PLAYER_KEY]?.entries ?? [];
+      if (Array.isArray(playerEntries)) {
+        entries.push(...playerEntries);
+      }
+    });
+    return entries;
+  }
+
+  async function renderFromSources(OBR) {
+    const roomEntries = await getRoomEntries(OBR);
+    const playerEntries = await getPlayerEntries(OBR);
+    const merged = mergeEntries([...roomEntries, ...playerEntries]).slice(-MAX_ENTRIES);
+    renderEntries(merged);
   }
 
   function formatDebugContext() {
@@ -152,15 +185,21 @@
           return;
         }
 
-        const metadata = await OBR.room.getMetadata();
-        render(metadata);
+          await renderFromSources(OBR);
 
-        const unsubscribe = OBR.room.onMetadataChange?.((metadata) => {
-          render(metadata);
-        });
+          const unsubscribe = OBR.room.onMetadataChange?.(() => {
+            renderFromSources(OBR);
+          });
         if (typeof unsubscribe === "function") {
           window.addEventListener("beforeunload", unsubscribe);
         }
+
+          const unsubscribeParty = OBR.party?.onChange?.(() => {
+            renderFromSources(OBR);
+          });
+          if (typeof unsubscribeParty === "function") {
+            window.addEventListener("beforeunload", unsubscribeParty);
+          }
 
         const clearBtn = document.querySelector('[data-role="log-clear"]');
         if (clearBtn) {
