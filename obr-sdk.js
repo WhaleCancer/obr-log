@@ -3624,11 +3624,18 @@ var OBR = (() => {
 })();
 try {
   var obrGlobal = (OBR && OBR.default) ? OBR.default : OBR;
+  var hasReady = function (obj) {
+    return obj && typeof obj.onReady === "function";
+  };
   if (typeof globalThis !== "undefined") {
-    globalThis.OBR = globalThis.OBR || obrGlobal;
+    if (!hasReady(globalThis.OBR)) {
+      globalThis.OBR = obrGlobal;
+    }
   }
   if (typeof window !== "undefined") {
-    window.OBR = window.OBR || obrGlobal;
+    if (!hasReady(window.OBR)) {
+      window.OBR = obrGlobal;
+    }
   }
 } catch (e) {
   // no-op
