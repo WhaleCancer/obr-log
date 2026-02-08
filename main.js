@@ -63,6 +63,8 @@
     return {
       url: window.location.href,
       origin: window.location.origin,
+      search: window.location.search,
+      referrer: document.referrer,
       inIframe,
       userAgent: navigator.userAgent,
       hasObr: Boolean(window.OBR || globalThis.OBR),
@@ -107,6 +109,8 @@
 
     let readyRegistered = false;
     let readyFired = false;
+    let readinessPoll = null;
+    let loggedMissingOnReady = false;
 
     let fallbackIndex = 0;
     const fallbackUrls = [
@@ -138,45 +142,91 @@
       pushDebug("Injected OBR SDK fallback script.", { url: nextUrl });
     }
 
-    function tryRun() {
-      const OBR = window.OBR || globalThis.OBR;
-      if (!OBR?.onReady) return false;
-      readyRegistered = true;
-      OBR.onReady(async () => {
-        try {
-          readyFired = true;
-          pushDebug("OBR.onReady fired.", formatDebugContext());
-          if (!OBR.room?.getMetadata) {
-            pushDebug("OBR.room.getMetadata not available.");
-            setEmpty("Owlbear Rodeo room not ready.");
-            return;
-          }
+    async function handleReady(OBR) {
+      try {
+        readyFired = true;
+        pushDebug("OBR ready handler running.", formatDebugContext());
+        if (!OBR.room?.getMetadata) {
+          pushDebug("OBR.room.getMetadata not available.");
+          setEmpty("Owlbear Rodeo room not ready.");
+          return;
+        }
 
-          const metadata = await OBR.room.getMetadata();
+        const metadata = await OBR.room.getMetadata();
+        render(metadata);
+
+        const unsubscribe = OBR.room.onMetadataChange?.((metadata) => {
           render(metadata);
+        });
+        if (typeof unsubscribe === "function") {
+          window.addEventListener("beforeunload", unsubscribe);
+        }
 
-          const unsubscribe = OBR.room.onMetadataChange?.((metadata) => {
-            render(metadata);
+        const clearBtn = document.querySelector('[data-role="log-clear"]');
+        if (clearBtn) {
+          clearBtn.addEventListener("click", async () => {
+            if (!OBR.room?.getMetadata || !OBR.room?.setMetadata) return;
+            const metadata = await OBR.room.getMetadata();
+            const next = { ...metadata, [SHARED_LOG_KEY]: { entries: [] } };
+            await OBR.room.setMetadata(next);
           });
-          if (typeof unsubscribe === "function") {
-            window.addEventListener("beforeunload", unsubscribe);
-          }
+        }
+      } catch (err) {
+        pushError("OBR ready handler failed.", err);
+        setEmpty("Owlbear Rodeo not ready.");
+      }
+    }
 
-          const clearBtn = document.querySelector('[data-role="log-clear"]');
-          if (clearBtn) {
-            clearBtn.addEventListener("click", async () => {
-              if (!OBR.room?.getMetadata || !OBR.room?.setMetadata) return;
-              const metadata = await OBR.room.getMetadata();
-              const next = { ...metadata, [SHARED_LOG_KEY]: { entries: [] } };
-              await OBR.room.setMetadata(next);
-            });
+    function describeObr(OBR) {
+      if (!OBR) return { available: false };
+      const keys = Object.keys(OBR).slice(0, 20);
+      return {
+        available: true,
+        type: typeof OBR,
+        keys,
+        hasOnReady: typeof OBR.onReady,
+        hasIsReady: "isReady" in OBR,
+        roomType: typeof OBR.room,
+      };
+    }
+
+    function startIsReadyPolling(OBR) {
+      if (readinessPoll) return;
+      readyRegistered = true;
+      readinessPoll = setInterval(() => {
+        try {
+          if (OBR.isReady === true) {
+            clearInterval(readinessPoll);
+            readinessPoll = null;
+            pushDebug("OBR.isReady became true.");
+            handleReady(OBR);
           }
         } catch (err) {
-          pushError("OBR.onReady handler failed.", err);
-          setEmpty("Owlbear Rodeo not ready.");
+          pushError("Error while polling OBR.isReady.", err);
         }
-      });
-      return true;
+      }, 250);
+    }
+
+    function tryRun() {
+      const OBR = window.OBR || globalThis.OBR;
+      if (!OBR) return false;
+      if (typeof OBR.onReady === "function") {
+        readyRegistered = true;
+        OBR.onReady(() => handleReady(OBR));
+        return true;
+      }
+
+      if (!loggedMissingOnReady) {
+        loggedMissingOnReady = true;
+        pushDebug("OBR present but onReady missing.", describeObr(OBR));
+      }
+
+      if ("isReady" in OBR) {
+        startIsReadyPolling(OBR);
+        return true;
+      }
+
+      return false;
     }
 
     if (tryRun()) return;
