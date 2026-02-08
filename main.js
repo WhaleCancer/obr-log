@@ -10,6 +10,8 @@
   const MAX_ENTRIES = 300;
   const LOG_PREFIX = "[AFF Shared Log]";
   const MAX_DEBUG_LINES = 200;
+  const LOG_API_BASE = (new URLSearchParams(window.location.search).get("logApi") || "http://localhost:8787").trim();
+  const LOG_API_ENABLED = LOG_API_BASE !== "off";
 
   function getLogFromMetadata(metadata) {
     const raw = metadata?.[SHARED_LOG_KEY];
@@ -91,6 +93,18 @@
     renderEntries(merged);
   }
 
+  async function fetchLogEntries() {
+    const response = await fetch(`${LOG_API_BASE}/logs`, { method: "GET" });
+    if (!response.ok) throw new Error(`Log API error: ${response.status}`);
+    const data = await response.json();
+    return Array.isArray(data?.entries) ? data.entries : [];
+  }
+
+  async function clearLogEntries() {
+    const response = await fetch(`${LOG_API_BASE}/logs`, { method: "DELETE" });
+    if (!response.ok) throw new Error(`Log API error: ${response.status}`);
+  }
+
   function formatDebugContext() {
     const inIframe = window.self !== window.top;
     return {
@@ -113,6 +127,7 @@
     const retryBtn = document.querySelector('[data-role="log-retry"]');
     const copyBtn = document.querySelector('[data-role="log-copy"]');
     const debugLines = [];
+    let pollTimer = null;
 
     function pushDebug(message, data) {
       const ts = new Date().toLocaleTimeString();
@@ -266,6 +281,43 @@
       }
 
       return false;
+    }
+
+    if (LOG_API_ENABLED) {
+      pushDebug("Using log API.", { base: LOG_API_BASE });
+      const refreshFromApi = async () => {
+        try {
+          const entries = await fetchLogEntries();
+          renderEntries(entries.slice(-MAX_ENTRIES));
+        } catch (error) {
+          pushError("Failed to fetch log entries.", error);
+        }
+      };
+      refreshFromApi();
+      pollTimer = window.setInterval(refreshFromApi, 2000);
+      if (retryBtn) {
+        retryBtn.addEventListener("click", () => {
+          pushDebug("Manual retry requested.");
+          refreshFromApi();
+        });
+      }
+      if (copyBtn) {
+        copyBtn.addEventListener("click", () => {
+          copyDebug();
+        });
+      }
+      const clearBtn = document.querySelector('[data-role="log-clear"]');
+      if (clearBtn) {
+        clearBtn.addEventListener("click", async () => {
+          try {
+            await clearLogEntries();
+            await refreshFromApi();
+          } catch (error) {
+            pushError("Failed to clear log entries.", error);
+          }
+        });
+      }
+      return;
     }
 
     if (tryRun()) return;
