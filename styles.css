@@ -127,6 +127,12 @@ body {
   gap: 0.5rem;
 }
 
+.log-debug__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
 .log-debug__body {
   margin: 0;
   max-height: 140px;

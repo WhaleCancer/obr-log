@@ -76,6 +76,7 @@
     const debugEl = document.querySelector('[data-role="log-debug"]');
     const debugBodyEl = document.querySelector('[data-role="log-debug-body"]');
     const retryBtn = document.querySelector('[data-role="log-retry"]');
+    const copyBtn = document.querySelector('[data-role="log-copy"]');
     const debugLines = [];
 
     function pushDebug(message, data) {
@@ -107,18 +108,34 @@
     let readyRegistered = false;
     let readyFired = false;
 
+    let fallbackIndex = 0;
+    const fallbackUrls = [
+      "https://cdn.jsdelivr.net/npm/@owlbear-rodeo/sdk@1.3.8/dist/obr-sdk.js",
+      "https://unpkg.com/@owlbear-rodeo/sdk@1.3.8/dist/obr-sdk.js",
+    ];
+
     function attachSdkFallback() {
       if (window.OBR || globalThis.OBR) return;
       const existing = document.querySelector('script[data-role="obr-sdk-fallback"]');
       if (existing) return;
+      const nextUrl = fallbackUrls[fallbackIndex];
+      if (!nextUrl) {
+        pushDebug("No more SDK fallback URLs left.");
+        return;
+      }
       const script = document.createElement("script");
-      script.src = "https://unpkg.com/@owlbear-rodeo/sdk@1.3.8/dist/obr-sdk.js";
+      script.src = nextUrl;
       script.async = true;
       script.setAttribute("data-role", "obr-sdk-fallback");
-      script.onload = () => pushDebug("OBR SDK fallback loaded.");
-      script.onerror = () => pushDebug("OBR SDK fallback failed to load.");
+      script.onload = () => pushDebug("OBR SDK fallback loaded.", { url: nextUrl });
+      script.onerror = () => {
+        pushDebug("OBR SDK fallback failed to load.", { url: nextUrl });
+        script.remove();
+        fallbackIndex += 1;
+        attachSdkFallback();
+      };
       document.head.appendChild(script);
-      pushDebug("Injected OBR SDK fallback script.");
+      pushDebug("Injected OBR SDK fallback script.", { url: nextUrl });
     }
 
     function tryRun() {
@@ -185,6 +202,40 @@
         pushDebug("Manual retry requested.");
         attachSdkFallback();
         tryRun();
+      });
+    }
+
+    async function copyDebug() {
+      if (debugLines.length === 0) return;
+      const text = debugLines.join("\n");
+      try {
+        if (navigator.clipboard?.writeText) {
+          await navigator.clipboard.writeText(text);
+          pushDebug("Copied debug output to clipboard.");
+          return;
+        }
+      } catch (err) {
+        pushError("Clipboard API failed.", err);
+      }
+      try {
+        const textarea = document.createElement("textarea");
+        textarea.value = text;
+        textarea.setAttribute("readonly", "readonly");
+        textarea.style.position = "absolute";
+        textarea.style.left = "-9999px";
+        document.body.appendChild(textarea);
+        textarea.select();
+        const ok = document.execCommand("copy");
+        document.body.removeChild(textarea);
+        pushDebug(ok ? "Copied debug output to clipboard." : "Copy command failed.");
+      } catch (err) {
+        pushError("Fallback copy failed.", err);
+      }
+    }
+
+    if (copyBtn) {
+      copyBtn.addEventListener("click", () => {
+        copyDebug();
       });
     }
 
