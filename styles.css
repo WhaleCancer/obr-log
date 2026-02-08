@@ -106,3 +106,38 @@ body {
 .log-list:not(:empty) + .log-empty {
   display: none;
 }
+
+.log-debug {
+  display: none;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+  padding: 0.6rem;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.log-debug__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.log-debug__body {
+  margin: 0;
+  max-height: 140px;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: "Consolas", "Courier New", monospace;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.log-button--small {
+  padding: 0.2rem 0.45rem;
+  font-size: 0.7rem;
+}
