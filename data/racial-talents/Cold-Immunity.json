@@ -1,6 +1,0 @@
-﻿{
-    "cost":  4,
-    "description":  "This race is completely immune to cold damage and cold-based attacks. They take no damage from ice, frost, freezing temperatures, or any cold-based magical effects. This immunity extends to environmental cold as well as combat damage.",
-    "name":  "Cold Immunity",
-    "type":  "Minor"
-}

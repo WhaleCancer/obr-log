@@ -1,0 +1,15 @@
+{
+  "name": "AFF Shared Log (local)",
+  "version": "0.1.0",
+  "manifest_version": 1,
+  "icon": "http://localhost:5174/aff-shared-log/notebook.png",
+  "author": "AFFWiki",
+  "description": "Shared room log for AFF and other extensions (local dev).",
+  "action": {
+    "title": "Shared Log",
+    "icon": "http://localhost:5174/aff-shared-log/notebook.png",
+    "popover": "http://localhost:5174/aff-shared-log/index.html",
+    "height": 500,
+    "width": 420
+  }
+}

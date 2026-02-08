@@ -1,6 +1,0 @@
-{
-  "id": "MOVE",
-  "name": "MOVE",
-  "emoji": "🚶",
-  "description": "MOVE represents how fast and far a character can move. It defaults to 4 for all species but can be adjusted by features and mutations."
-}

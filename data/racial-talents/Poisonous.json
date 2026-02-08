@@ -1,5 +1,0 @@
-﻿{
-    "description":  "This alien type exudes poison. If the race also has a natural weapon such as a claw, horn or spikes, the poison will coat those weapons and take effect if that weapon causes damage. If the alien does not have a natural weapon, the poison may be exuded onto the skin and require the touch of a hand etc. This poison could cause a -1 penalty on the following round, 1 point of STAMINA damage, cause a penalty to awareness tests, or have some other somewhat minor effect determined by the Director.",
-    "name":  "Poisonous",
-    "type":  "Major"
-}

@@ -1,6 +1,0 @@
-﻿{
-    "cost":  4,
-    "description":  "This race is completely immune to fire damage and fire-based attacks. They take no damage from flames, heat, burning, or any fire-based magical effects. This immunity extends to environmental fire as well as combat damage.",
-    "name":  "Fire Immunity",
-    "type":  "Minor"
-}

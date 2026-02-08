@@ -1,5 +1,0 @@
-﻿{
-    "description":  "This talent allows a creature to strangle its victim after successfully hitting them twice in a row. If the creature scores two successful hits in a row, it will grasp its opponent\u0027s neck and begin strangling them, causing an additional die of damage. Each Attack Round after this, the victim must strike successfully and free themselves from the grip, or take the same extra damage, until one or the other is killed.\nThis talent is commonly found among undead creatures such as Crypt Stalkers, who use their unearthly strength to grip and strangle their victims.",
-    "name":  "Strangulation",
-    "type":  "Major"
-}

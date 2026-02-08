@@ -1,5 +1,0 @@
-﻿{
-    "description":  "This alien may morph between different (but similar) forms, each with a specific purpose. Whilst in the specific form, all linked actions gain a bonus of +1, but non-linked actions suffer a penalty of -2. For example, an alien may have a \"movement\" form that grants bonuses to running, jumping and climbing, although if that form attempts to operate a computer, it would have a penalty of -2. Changing forms takes at least 1-6 full rounds. Some other examples might include a Burrowing form, regeneration cocoon, vacuum survival form etc.\nAn alien with this talent has two forms each time the talent is chosen, and one form may be a \"base\" format, which has no penalties or bonuses.",
-    "name":  "Specialised Forms",
-    "type":  "Minor"
-}
