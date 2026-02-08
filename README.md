@@ -13,7 +13,7 @@ A separate Owlbear Rodeo extension that shows a **room-wide log** of loggable ac
 ## Setup
 
 1. Add this extension in Owlbear Rodeo (same way you add AFF Star Trek):
-   - Production: use `https://whalecancer.github.io/obr-log/manifest.json`.
+   - Production: use `https://whalecancer.github.io/obr-log/manifest-v2.json`.
    - Local dev: use `manifest-local.json` and serve both `aff-star-trek` and `aff-shared-log` (e.g. from the repo root so `/aff-shared-log/index.html` is reachable).
 
 2. Open **Shared Log** from the extension menu to view the room log. Everyone in the room sees the same log.
