@@ -5,7 +5,7 @@ import json
 import base64
 import urllib.parse
 
-CACHE_BUST_VERSION = "19"
+CACHE_BUST_VERSION = "25"
 LOG_API_BASE = os.environ.get("LOG_API_BASE", "off").strip()
 PUBLIC_EXTENSION_BASE = (os.environ.get("PUBLIC_EXTENSION_BASE") or "").strip()
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
