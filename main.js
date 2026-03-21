@@ -74,16 +74,39 @@
     }
   }
 
+  function tryUnlockAudioWithGesture() {
+    primeSoundElements();
+    const roll = getSoundElement("roll");
+    if (roll) {
+      roll.volume = 0.001;
+      void roll.play().then(() => {
+        roll.pause();
+        roll.currentTime = 0;
+        roll.volume = SOUND_VOLUMES.roll ?? 0.72;
+      }).catch(() => {});
+    }
+  }
+
   function bindAudioUnlockHandlers() {
     if (audioUnlockBound) return;
     audioUnlockBound = true;
     const unlock = () => {
-      primeSoundElements();
+      tryUnlockAudioWithGesture();
       window.removeEventListener("pointerdown", unlock, true);
       window.removeEventListener("keydown", unlock, true);
     };
     window.addEventListener("pointerdown", unlock, { capture: true, once: true, passive: true });
     window.addEventListener("keydown", unlock, { capture: true, once: true });
+    const panel = document.querySelector(".log-panel");
+    if (panel) {
+      panel.addEventListener(
+        "pointerdown",
+        () => {
+          tryUnlockAudioWithGesture();
+        },
+        { capture: true, once: true, passive: true },
+      );
+    }
     primeSoundElements();
   }
 
@@ -620,6 +643,13 @@
           window.addEventListener("beforeunload", unsubscribeParty);
         }
 
+        const unsubscribeSelfPlayer = OBR.player?.onChange?.(() => {
+          void refreshLogDisplay();
+        });
+        if (typeof unsubscribeSelfPlayer === "function") {
+          window.addEventListener("beforeunload", unsubscribeSelfPlayer);
+        }
+
         const clearBtn = document.querySelector('[data-role="log-clear"]');
         if (clearBtn) {
           clearBtn.addEventListener("click", async () => {
@@ -635,6 +665,13 @@
                 await OBR.room.setMetadata({ [SHARED_LOG_KEY]: { entries: [] } });
               } catch (error) {
                 pushError("Failed to clear room log metadata.", error);
+              }
+            }
+            if (OBR.player?.setMetadata) {
+              try {
+                await OBR.player.setMetadata({ [SHARED_LOG_PLAYER_KEY]: { entries: [] } });
+              } catch (error) {
+                pushError("Failed to clear your player log buffer.", error);
               }
             }
             await refreshLogDisplay();
