@@ -14,7 +14,7 @@
   "action": {
     "title": "Shared Log",
     "icon": "https://whalecancer.github.io/obr-log/notebook.png?v=20",
-    "popover": "https://whalecancer.github.io/obr-log/index.html?v=28",
+    "popover": "https://whalecancer.github.io/obr-log/index.html?v=29",
     "height": 1000,
     "width": 630
   }
