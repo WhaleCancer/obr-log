@@ -367,23 +367,48 @@
     return Array.isArray(entries) ? entries : [];
   }
 
+  function collectPlayerLogBufferFromMetadata(metadata, into) {
+    if (!metadata || typeof metadata !== "object") return;
+    const buf = metadata[SHARED_LOG_PLAYER_KEY]?.entries;
+    if (Array.isArray(buf)) into.push(...buf);
+  }
+
   async function getPlayerEntries(OBR) {
-    if (!OBR?.party?.getPlayers) return [];
-    const players = await OBR.party.getPlayers();
     const entries = [];
-    players.forEach((player) => {
-      const playerEntries = player?.metadata?.[SHARED_LOG_PLAYER_KEY]?.entries ?? [];
-      if (Array.isArray(playerEntries)) {
-        entries.push(...playerEntries);
+    if (OBR?.player?.getMetadata) {
+      try {
+        collectPlayerLogBufferFromMetadata(await OBR.player.getMetadata(), entries);
+      } catch {
+        /* party-only fallback below */
       }
-    });
+    }
+    if (OBR?.party?.getPlayers) {
+      try {
+        const players = await OBR.party.getPlayers();
+        players.forEach((p) => collectPlayerLogBufferFromMetadata(p?.metadata, entries));
+      } catch {
+        /* ignore */
+      }
+    }
     return entries;
+  }
+
+  async function getSceneLogEntries(OBR) {
+    if (!OBR?.scene?.getMetadata) return [];
+    try {
+      const metadata = await OBR.scene.getMetadata();
+      const raw = metadata?.[SHARED_LOG_KEY];
+      return Array.isArray(raw?.entries) ? raw.entries : [];
+    } catch {
+      return [];
+    }
   }
 
   async function renderFromSources(OBR) {
     const roomEntries = await getRoomEntries(OBR);
     const playerEntries = await getPlayerEntries(OBR);
-    const merged = mergeEntries([...roomEntries, ...playerEntries]).slice(-MAX_ENTRIES);
+    const sceneEntries = await getSceneLogEntries(OBR);
+    const merged = mergeEntries([...roomEntries, ...playerEntries, ...sceneEntries]).slice(-MAX_ENTRIES);
     renderEntries(merged);
   }
 
@@ -428,6 +453,7 @@
     let combatStatePrimed = false;
     let combatToggleBound = false;
     let combatMetadataUnsubscribe = null;
+    let sceneLogUnsubscribe = null;
     let combatToggleInFlight = false;
     bindAudioUnlockHandlers();
 
@@ -486,6 +512,7 @@
       const OBR = sharedObr;
       let roomEntries = [];
       let playerEntries = [];
+      let sceneEntries = [];
       if (OBR?.room?.getMetadata) {
         try {
           roomEntries = await getRoomEntries(OBR);
@@ -493,14 +520,21 @@
           pushError("Failed to read room log metadata.", error);
         }
       }
-      if (OBR?.party?.getPlayers) {
+      if (OBR?.party?.getPlayers || OBR?.player?.getMetadata) {
         try {
           playerEntries = await getPlayerEntries(OBR);
         } catch (error) {
           pushError("Failed to read player log metadata.", error);
         }
       }
-      const merged = mergeEntries([...apiEntries, ...roomEntries, ...playerEntries]).slice(-MAX_ENTRIES);
+      if (OBR?.scene?.getMetadata) {
+        try {
+          sceneEntries = await getSceneLogEntries(OBR);
+        } catch (error) {
+          pushError("Failed to read scene log metadata.", error);
+        }
+      }
+      const merged = mergeEntries([...apiEntries, ...roomEntries, ...playerEntries, ...sceneEntries]).slice(-MAX_ENTRIES);
       renderEntries(merged);
     }
 
@@ -625,6 +659,15 @@
           }
         }
 
+        if (!sceneLogUnsubscribe && typeof OBR.scene?.onMetadataChange === "function") {
+          sceneLogUnsubscribe = OBR.scene.onMetadataChange(() => {
+            void refreshLogDisplay();
+          });
+          if (typeof sceneLogUnsubscribe === "function") {
+            window.addEventListener("beforeunload", sceneLogUnsubscribe);
+          }
+        }
+
         await refreshLogDisplay();
 
         const unsubscribeParty = OBR.party?.onChange?.(() => {
@@ -672,6 +715,13 @@
                 await OBR.player.setMetadata({ [SHARED_LOG_PLAYER_KEY]: { entries: [] } });
               } catch (error) {
                 pushError("Failed to clear your player log buffer.", error);
+              }
+            }
+            if (OBR.scene?.setMetadata) {
+              try {
+                await OBR.scene.setMetadata({ [SHARED_LOG_KEY]: { entries: [] } });
+              } catch (error) {
+                pushError("Failed to clear scene log metadata.", error);
               }
             }
             await refreshLogDisplay();
