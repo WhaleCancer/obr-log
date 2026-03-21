@@ -330,6 +330,21 @@
       div.className = "log-entry";
       const tone = getEntryTone(entry);
       if (tone) div.classList.add(`log-entry--${tone}`);
+      const body = document.createElement("div");
+      body.className = "log-entry__body";
+      const avatarUrl = String(entry.avatarUrl || "").trim();
+      if (avatarUrl) {
+        const img = document.createElement("img");
+        img.className = "log-entry__avatar";
+        img.src = avatarUrl;
+        img.alt = "";
+        img.decoding = "async";
+        img.loading = "lazy";
+        img.referrerPolicy = "no-referrer";
+        body.appendChild(img);
+      }
+      const main = document.createElement("div");
+      main.className = "log-entry__main";
       const meta = document.createElement("div");
       meta.className = "log-entry__meta";
       const who = [entry.playerName || "Someone", entry.role === "GM" ? " (GM)" : ""].join("");
@@ -339,8 +354,10 @@
       const text = document.createElement("div");
       text.className = "log-entry__text";
       text.textContent = entry.text || "";
-      div.appendChild(meta);
-      div.appendChild(text);
+      main.appendChild(meta);
+      main.appendChild(text);
+      body.appendChild(main);
+      div.appendChild(body);
       listEl.appendChild(div);
     });
 
