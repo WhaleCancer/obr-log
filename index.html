@@ -17,40 +17,6 @@
           <button type="button" class="log-button" data-role="log-clear" title="Clear all entries">Clear</button>
         </div>
       </header>
-      <section class="log-bottom" data-role="log-bottom" aria-label="Dice and debug">
-        <div class="log-bottom__tabs" role="tablist" aria-label="Bottom panel">
-          <button type="button" class="log-bottom__tab log-bottom__tab--active" role="tab" aria-selected="true" aria-controls="panel-dice" id="tab-dice" data-role="tab-dice">Dice rolls</button>
-          <button type="button" class="log-bottom__tab" role="tab" aria-selected="false" aria-controls="panel-debug" id="tab-debug" data-role="tab-debug">Debug</button>
-        </div>
-        <div class="log-bottom__panels">
-          <div class="log-bottom__panel" id="panel-dice" role="tabpanel" aria-labelledby="tab-dice" data-role="panel-dice">
-            <p class="shared-dice__hint">Character-sheet rolls sync here for the whole room. Use the buttons for ad-hoc rolls.</p>
-            <div class="shared-dice__animation" data-role="shared-dice-animation">
-              <div class="shared-die" data-role="shared-die-a">
-                <img class="shared-die__img" data-role="shared-die-img-a" alt="" width="48" height="48" />
-              </div>
-              <div class="shared-die" data-role="shared-die-b">
-                <img class="shared-die__img" data-role="shared-die-img-b" alt="" width="48" height="48" />
-              </div>
-            </div>
-            <div class="shared-dice__caption" data-role="shared-dice-caption" aria-live="polite"></div>
-            <div class="shared-dice__actions">
-              <button type="button" class="log-button" data-role="shared-roll-2d6">Roll 2d6</button>
-              <button type="button" class="log-button" data-role="shared-roll-1d6">Roll 1d6</button>
-            </div>
-          </div>
-          <div class="log-bottom__panel log-bottom__panel--debug" id="panel-debug" role="tabpanel" aria-labelledby="tab-debug" data-role="panel-debug" hidden>
-            <div class="log-debug__header">
-              <strong>Debug</strong>
-              <div class="log-debug__actions">
-                <button type="button" class="log-button log-button--small" data-role="log-copy">Copy</button>
-                <button type="button" class="log-button log-button--small" data-role="log-retry">Retry</button>
-              </div>
-            </div>
-            <pre class="log-debug__body" data-role="log-debug-body"></pre>
-          </div>
-        </div>
-      </section>
       <div class="log-content" data-role="log-content">
         <section class="log-column log-column--log">
           <div class="log-list" data-role="log-list"></div>
@@ -64,6 +30,6 @@
       </div>
     </main>
     <script src="./obr-sdk.js?v=4"></script>
-    <script src="./main.js?v=32"></script>
+    <script src="./main.js?v=37"></script>
   </body>
 </html>

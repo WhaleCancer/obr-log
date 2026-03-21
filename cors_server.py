@@ -5,7 +5,7 @@ import json
 import base64
 import urllib.parse
 
-CACHE_BUST_VERSION = "29"
+CACHE_BUST_VERSION = "37"
 LOG_API_BASE = os.environ.get("LOG_API_BASE", "off").strip()
 PUBLIC_EXTENSION_BASE = (os.environ.get("PUBLIC_EXTENSION_BASE") or "").strip()
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -144,9 +144,9 @@ class CORSHandler(SimpleHTTPRequestHandler):
                         encoded = base64.b64encode(f.read()).decode("ascii")
                     icon = f"data:image/png;base64,{encoded}"
                 else:
-                    icon = "https://whalecancer.github.io/obr-aff-shared-log/notebook.png"
+                    icon = "https://whalecancer.github.io/obr-log/notebook.png"
             else:
-                icon = f"{base}/notebook.png" if os.path.isfile(icon_path) else "https://whalecancer.github.io/obr-aff-shared-log/notebook.png"
+                icon = f"{base}/notebook.png" if os.path.isfile(icon_path) else "https://whalecancer.github.io/obr-log/notebook.png"
             log_api_param = ""
             if LOG_API_BASE and LOG_API_BASE.lower() != "off":
                 # Don't point tunneled/hosted popovers back at a local-only API.

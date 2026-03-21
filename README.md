@@ -1,14 +1,17 @@
 # AFF Shared Log
 
+**There is only one Shared Log implementation.** Edit and run it from this folder (`Owlbear-Rodeo-Extensions/aff-shared-log/`). The sibling folder **`obr-log-deploy/`** at the AFFWiki repo root is the **GitHub Pages deploy mirror** for [whalecancer.github.io/obr-log](https://whalecancer.github.io/obr-log/) (`WhaleCancer/obr-log`); copy from here into that repo and push, or run `..\sync-shared-log-to-obr-log-deploy.ps1` from `Owlbear-Rodeo-Extensions`. There is no separate `obr-aff-shared-log` app—only a stale icon URL that pointed there historically.
+
 A separate Owlbear Rodeo extension that shows a **room-wide log** of loggable actions. When any player or the GM does something loggable (e.g. a custom roll in the AFF Star Trek extension), it is written to room metadata and appears here for everyone.
 
 ## How it works
 
 - **Room metadata** key: `affSharedLog`
 - **Player metadata** key (fallback, merged into the same list): `affSharedLogPlayer` — same `entries` shape. AFF Star Trek writes here when room metadata is not writable.
+- **Scene metadata** (optional mirror): same key `affSharedLog` as room — merged into the list and refreshed on `OBR.scene.onMetadataChange` when available.
 - **Shape**: `{ entries: [ { id, ts, playerId, playerName, role, source, text, details? } ] }`
 - The **AFF Star Trek** extension (and any other extension that follows this protocol) appends entries via `OBR.room.getMetadata()` / `OBR.room.setMetadata()`.
-- This extension subscribes to `OBR.room.onMetadataChange()`, `OBR.party.onChange`, and `OBR.player.onChange` so room and per-player log buffers both refresh the list.
+- This extension reads the local player buffer with **`OBR.player.getMetadata()`** (not only `party.getPlayers()`, which often omits extension keys), subscribes to `OBR.room.onMetadataChange()`, `OBR.scene.onMetadataChange` when present, `OBR.party.onChange`, and `OBR.player.onChange` so all sources refresh the list.
 - Entries are capped at 300; older ones are dropped when appending.
 
 ## Setup
