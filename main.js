@@ -178,7 +178,7 @@
    * Room-synced d6 animation (game-icons delapouite dice-six-faces-*).
    * @param {(msg: string, err: unknown) => void} reportError
    */
-  function createSharedDiceAnimator(dieAEl, dieBEl, imgA, imgB, captionEl, reportError) {
+  function createSharedDiceAnimator(dieAEl, dieBEl, imgA, imgB, captionEl, reportError, onShowDiceTab) {
     let lastProcessedDiceId = null;
     let animationChain = Promise.resolve();
 
@@ -240,9 +240,16 @@
       const id = String(payload.id || "");
       if (!id) return;
       if (!force && id === lastProcessedDiceId) return;
-      lastProcessedDiceId = id;
       const norm = normalizeDicePayload(payload);
       if (!norm) return;
+      lastProcessedDiceId = id;
+      if (typeof onShowDiceTab === "function") {
+        try {
+          onShowDiceTab();
+        } catch {
+          /* ignore */
+        }
+      }
       const { diceCount, finalA, finalB } = norm;
       await runFaceAnimation([finalA, finalB], diceCount);
       const who = String(payload.playerName || "Someone").trim() || "Someone";
@@ -304,8 +311,16 @@
       await playDicePayloadInternal(payload, { force: true });
       try {
         await OBR.room.setMetadata({ [SHARED_DICE_KEY]: payload });
+        return;
       } catch (error) {
-        if (typeof reportError === "function") reportError("Failed to broadcast dice roll to room.", error);
+        if (typeof reportError === "function") reportError("Room dice broadcast failed, trying scene…", error);
+      }
+      if (OBR.scene?.setMetadata) {
+        try {
+          await OBR.scene.setMetadata({ [SHARED_DICE_KEY]: payload });
+        } catch (sceneError) {
+          if (typeof reportError === "function") reportError("Failed to broadcast dice roll to room and scene.", sceneError);
+        }
       }
     }
 
@@ -620,6 +635,7 @@
     const copyBtn = document.querySelector('[data-role="log-copy"]');
     const debugLines = [];
     let pollTimer = null;
+    let dicePollTimer = null;
     let combatStateValue = false;
     let combatStatePrimed = false;
     let combatToggleBound = false;
@@ -688,6 +704,7 @@
       sharedDieImgB,
       sharedDiceCaption,
       (msg, err) => pushError(msg, err),
+      () => selectBottomTab("dice"),
     );
     diceAnimator.resetIdleFaces();
 
@@ -798,6 +815,14 @@
         } catch {
           /* ignore */
         }
+        if (OBR.scene?.getMetadata) {
+          try {
+            const sceneMeta = await OBR.scene.getMetadata();
+            diceAnimator.primeFromMetadataPayload(sceneMeta?.[SHARED_DICE_KEY]);
+          } catch {
+            /* ignore */
+          }
+        }
 
         if (!combatToggleBound && combatToggleBtn) {
           combatToggleBound = true;
@@ -859,13 +884,38 @@
         }
 
         if (!sceneLogUnsubscribe && typeof OBR.scene?.onMetadataChange === "function") {
-          sceneLogUnsubscribe = OBR.scene.onMetadataChange(() => {
+          sceneLogUnsubscribe = OBR.scene.onMetadataChange((metadata) => {
+            diceAnimator.onRoomMetadataDice(metadata);
             void refreshLogDisplay();
           });
           if (typeof sceneLogUnsubscribe === "function") {
             window.addEventListener("beforeunload", sceneLogUnsubscribe);
           }
         }
+
+        if (dicePollTimer) {
+          window.clearInterval(dicePollTimer);
+          dicePollTimer = null;
+        }
+        dicePollTimer = window.setInterval(() => {
+          const O = sharedObr;
+          if (O?.room?.getMetadata) {
+            void O.room
+              .getMetadata()
+              .then((metadata) => {
+                diceAnimator.onRoomMetadataDice(metadata);
+              })
+              .catch(() => {});
+          }
+          if (O?.scene?.getMetadata) {
+            void O.scene
+              .getMetadata()
+              .then((metadata) => {
+                diceAnimator.onRoomMetadataDice(metadata);
+              })
+              .catch(() => {});
+          }
+        }, 400);
 
         await refreshLogDisplay();
 

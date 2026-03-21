@@ -1,6 +1,6 @@
 {
   "name": "AFF Shared Log",
-  "version": "0.1.11",
+  "version": "0.1.12",
   "manifest_version": 1,
   "icon": "https://whalecancer.github.io/obr-log/notebook.png?v=20",
   "author": "AFFWiki",
@@ -14,7 +14,7 @@
   "action": {
     "title": "Shared Log",
     "icon": "https://whalecancer.github.io/obr-log/notebook.png?v=20",
-    "popover": "https://whalecancer.github.io/obr-log/index.html?v=31",
+    "popover": "https://whalecancer.github.io/obr-log/index.html?v=32",
     "height": 1000,
     "width": 630
   }

@@ -17,17 +17,6 @@
           <button type="button" class="log-button" data-role="log-clear" title="Clear all entries">Clear</button>
         </div>
       </header>
-      <div class="log-content" data-role="log-content">
-        <section class="log-column log-column--log">
-          <div class="log-list" data-role="log-list"></div>
-          <div class="log-empty" data-role="log-empty">No entries yet.</div>
-        </section>
-        <aside class="initiative-panel" data-role="initiative-panel" hidden>
-          <div class="initiative-panel__header">⚡ Initiative</div>
-          <div class="initiative-panel__list" data-role="initiative-list"></div>
-          <div class="initiative-panel__empty" data-role="initiative-empty">No initiative rolls yet.</div>
-        </aside>
-      </div>
       <section class="log-bottom" data-role="log-bottom" aria-label="Dice and debug">
         <div class="log-bottom__tabs" role="tablist" aria-label="Bottom panel">
           <button type="button" class="log-bottom__tab log-bottom__tab--active" role="tab" aria-selected="true" aria-controls="panel-dice" id="tab-dice" data-role="tab-dice">Dice rolls</button>
@@ -35,7 +24,7 @@
         </div>
         <div class="log-bottom__panels">
           <div class="log-bottom__panel" id="panel-dice" role="tabpanel" aria-labelledby="tab-dice" data-role="panel-dice">
-            <p class="shared-dice__hint">Skill and luck rolls from the character sheet animate here for everyone. You can also roll below.</p>
+            <p class="shared-dice__hint">Character-sheet rolls sync here for the whole room. Use the buttons for ad-hoc rolls.</p>
             <div class="shared-dice__animation" data-role="shared-dice-animation">
               <div class="shared-die" data-role="shared-die-a">
                 <img class="shared-die__img" data-role="shared-die-img-a" alt="" width="48" height="48" />
@@ -62,8 +51,19 @@
           </div>
         </div>
       </section>
+      <div class="log-content" data-role="log-content">
+        <section class="log-column log-column--log">
+          <div class="log-list" data-role="log-list"></div>
+          <div class="log-empty" data-role="log-empty">No entries yet.</div>
+        </section>
+        <aside class="initiative-panel" data-role="initiative-panel" hidden>
+          <div class="initiative-panel__header">⚡ Initiative</div>
+          <div class="initiative-panel__list" data-role="initiative-list"></div>
+          <div class="initiative-panel__empty" data-role="initiative-empty">No initiative rolls yet.</div>
+        </aside>
+      </div>
     </main>
     <script src="./obr-sdk.js?v=4"></script>
-    <script src="./main.js?v=31"></script>
+    <script src="./main.js?v=32"></script>
   </body>
 </html>
