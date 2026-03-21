@@ -5,6 +5,12 @@
   "icon": "http://localhost:5174/aff-shared-log/notebook.png",
   "author": "AFFWiki",
   "description": "Shared room log for AFF and other extensions (local dev).",
+  "permissions": [
+    {
+      "name": "autoplay",
+      "reason": "Play dice roll and success/failure sounds when new log entries arrive."
+    }
+  ],
   "action": {
     "title": "Shared Log",
     "icon": "http://localhost:5174/aff-shared-log/notebook.png",

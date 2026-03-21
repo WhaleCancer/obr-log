@@ -1,14 +1,20 @@
 {
   "name": "AFF Shared Log",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "manifest_version": 1,
   "icon": "https://whalecancer.github.io/obr-log/notebook.png?v=20",
   "author": "AFFWiki",
   "description": "Shared room log for AFF and other extensions. All players and GM see loggable actions in one place.",
+  "permissions": [
+    {
+      "name": "autoplay",
+      "reason": "Play dice roll and success/failure sounds when new log entries arrive."
+    }
+  ],
   "action": {
     "title": "Shared Log",
     "icon": "https://whalecancer.github.io/obr-log/notebook.png?v=20",
-    "popover": "https://whalecancer.github.io/obr-log/index.html?v=23",
+    "popover": "https://whalecancer.github.io/obr-log/index.html?v=24",
     "height": 1000,
     "width": 630
   }

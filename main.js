@@ -630,11 +630,9 @@
                 pushError("Failed to clear log entries on server.", error);
               }
             }
-            if (OBR.room?.getMetadata && OBR.room?.setMetadata) {
+            if (OBR.room?.setMetadata) {
               try {
-                const metadata = await OBR.room.getMetadata();
-                const next = { ...metadata, [SHARED_LOG_KEY]: { entries: [] } };
-                await OBR.room.setMetadata(next);
+                await OBR.room.setMetadata({ [SHARED_LOG_KEY]: { entries: [] } });
               } catch (error) {
                 pushError("Failed to clear room log metadata.", error);
               }
