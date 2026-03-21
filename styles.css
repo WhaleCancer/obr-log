@@ -134,9 +134,8 @@ body {
 
 .log-entry__avatar {
   flex-shrink: 0;
-  width: auto;
+  width: calc(0.85rem * var(--log-entry-line-height) * 3);
   height: calc(0.85rem * var(--log-entry-line-height) * 3);
-  aspect-ratio: 1;
   object-fit: cover;
   border-radius: 4px;
   border: 1px solid rgba(255, 255, 255, 0.12);

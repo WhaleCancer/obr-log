@@ -340,7 +340,6 @@
         img.alt = "";
         img.decoding = "async";
         img.loading = "lazy";
-        img.referrerPolicy = "no-referrer";
         body.appendChild(img);
       }
       const main = document.createElement("div");
@@ -371,7 +370,16 @@
     allEntries.forEach((entry) => {
       if (!entry) return;
       const id = entry.id || `${entry.playerId || "player"}-${entry.ts || 0}-${entry.text || ""}`;
-      if (!map.has(id)) map.set(id, entry);
+      const prev = map.get(id);
+      if (!prev) {
+        map.set(id, entry);
+        return;
+      }
+      const merged = { ...prev, ...entry };
+      const av = String(entry.avatarUrl || "").trim();
+      const pv = String(prev.avatarUrl || "").trim();
+      merged.avatarUrl = av || pv || undefined;
+      map.set(id, merged);
     });
     return Array.from(map.values()).sort((a, b) => (a.ts || 0) - (b.ts || 0));
   }
