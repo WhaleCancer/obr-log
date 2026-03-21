@@ -1,5 +1,7 @@
 # AFF Shared Log
 
+**This repo (`obr-log`) is the live GitHub Pages site** at `https://whalecancer.github.io/obr-log/`. Source of truth in the AFFWiki monorepo is `Owlbear-Rodeo-Extensions/aff-shared-log/`; run a file sync into this repo before pushing.
+
 A separate Owlbear Rodeo extension that shows a **room-wide log** of loggable actions. When any player or the GM does something loggable (e.g. a custom roll in the AFF Star Trek extension), it is written to room metadata and appears here for everyone.
 
 ## How it works
@@ -13,8 +15,9 @@ A separate Owlbear Rodeo extension that shows a **room-wide log** of loggable ac
 ## Setup
 
 1. Add this extension in Owlbear Rodeo (same way you add AFF Star Trek):
-   - Production: use `https://whalecancer.github.io/obr-log/manifest-v6.json`.
-   - Local dev: use `manifest-local.json` and serve both `aff-star-trek` and `aff-shared-log` (e.g. from the repo root so `/aff-shared-log/index.html` is reachable).
+   - **Production:** push **this** `obr-log` repository to GitHub Pages (`whalecancer.github.io/obr-log`). After each sync, open the deployed `main.js` in a tab and confirm it contains `refreshLogDisplay` (not `refreshFromApi`).
+   - Use **`https://whalecancer.github.io/obr-log/manifest.json`** or **`manifest-v6.json`**. Bump the `?v=` on the manifest **popover** URL when you publish so players get a fresh `index.html` (which points at `main.js?v=…`).
+   - **Local dev:** from `aff-shared-log/`, run `python cors_server.py` → **`http://localhost:4176/manifest.json`** (Owlbear on the web needs an HTTPS tunnel to that URL, same mixed-content rules as AFF Star Trek).
 
 2. Open **Shared Log** from the extension menu to view the room log. Everyone in the room sees the same log.
 

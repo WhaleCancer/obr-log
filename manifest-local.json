@@ -9,7 +9,7 @@
     "title": "Shared Log",
     "icon": "http://localhost:5174/aff-shared-log/notebook.png",
     "popover": "http://localhost:5174/aff-shared-log/index.html",
-    "height": 500,
-    "width": 420
+    "height": 1000,
+    "width": 630
   }
 }

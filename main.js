@@ -7,11 +7,172 @@
 (function () {
   const SHARED_LOG_KEY = "affSharedLog";
   const SHARED_LOG_PLAYER_KEY = "affSharedLogPlayer";
+  const COMBAT_STATE_KEY = "affSharedCombatState";
   const MAX_ENTRIES = 300;
   const LOG_PREFIX = "[AFF Shared Log]";
   const MAX_DEBUG_LINES = 200;
-  const LOG_API_BASE = (new URLSearchParams(window.location.search).get("logApi") || "https://localhost:8787").trim();
+  const LOG_API_PARAM = (new URLSearchParams(window.location.search).get("logApi") || "").trim();
+  const IS_LOCAL_PAGE = (() => {
+    const host = String(window.location.hostname || "").toLowerCase();
+    return host === "localhost" || host === "127.0.0.1";
+  })();
+  const IS_LOOPBACK_API = (() => {
+    if (!LOG_API_PARAM) return false;
+    try {
+      const parsed = new URL(LOG_API_PARAM);
+      const host = String(parsed.hostname || "").toLowerCase();
+      return (
+        host === "localhost" ||
+        host === "127.0.0.1" ||
+        host === "[::1]" ||
+        host === "::1"
+      );
+    } catch (error) {
+      return false;
+    }
+  })();
+  const LOG_API_BASE = (!LOG_API_PARAM || (!IS_LOCAL_PAGE && IS_LOOPBACK_API)) ? "off" : LOG_API_PARAM;
   const LOG_API_ENABLED = LOG_API_BASE !== "off";
+  const MAX_TRACKED_SOUND_IDS = 2000;
+  const LOG_POLL_INTERVAL_MS = 250;
+  const SOUND_PATHS = {
+    roll: "./audio/dice-roll.mp3",
+    success: "./audio/tos_keypress2.mp3",
+    failure: "./audio/tos_keypress7.mp3",
+    damage: "./audio/damage.mp3",
+    heal: "./audio/hypospray3_clean.mp3",
+    combatOn: "./audio/tos_red_alert.wav",
+    combatOff: "./audio/tos-secure-from-red-alert.mp3",
+  };
+  const SOUND_VOLUMES = {
+    roll: 0.72,
+    success: 0.85,
+    failure: 0.85,
+    damage: 0.9,
+    heal: 0.9,
+    combatOn: 0.92,
+    combatOff: 0.92,
+  };
+  let soundHistoryPrimed = false;
+  const playedSoundIds = new Set();
+  const soundElements = new Map();
+  let audioUnlockBound = false;
+
+  function getEntryId(entry) {
+    if (!entry || typeof entry !== "object") return "";
+    const explicitId = String(entry.id || "").trim();
+    if (explicitId) return explicitId;
+    return `${entry.playerId || "player"}-${entry.ts || 0}-${entry.text || ""}`;
+  }
+
+  function rememberPlayedSoundId(id) {
+    if (!id) return;
+    playedSoundIds.add(id);
+    if (playedSoundIds.size > MAX_TRACKED_SOUND_IDS) {
+      const oldest = playedSoundIds.values().next().value;
+      if (oldest) playedSoundIds.delete(oldest);
+    }
+  }
+
+  function bindAudioUnlockHandlers() {
+    if (audioUnlockBound) return;
+    audioUnlockBound = true;
+    const unlock = () => {
+      primeSoundElements();
+      window.removeEventListener("pointerdown", unlock, true);
+      window.removeEventListener("keydown", unlock, true);
+    };
+    window.addEventListener("pointerdown", unlock, { capture: true, once: true, passive: true });
+    window.addEventListener("keydown", unlock, { capture: true, once: true });
+    primeSoundElements();
+  }
+
+  function getSoundElement(kind) {
+    const src = SOUND_PATHS[kind];
+    if (!src) return null;
+    if (soundElements.has(kind)) return soundElements.get(kind);
+    try {
+      const audio = new Audio(src);
+      audio.preload = "auto";
+      audio.volume = SOUND_VOLUMES[kind] ?? 0.8;
+      soundElements.set(kind, audio);
+      return audio;
+    } catch (error) {
+      return null;
+    }
+  }
+
+  function primeSoundElements() {
+    Object.keys(SOUND_PATHS).forEach((kind) => {
+      const audio = getSoundElement(kind);
+      if (!audio) return;
+      try {
+        audio.load();
+      } catch (error) {
+        // Ignore preload failures; playback will still retry on demand.
+      }
+    });
+  }
+
+  function playSound(kind) {
+    const audio = getSoundElement(kind);
+    if (!audio) return null;
+    try {
+      audio.pause();
+      audio.currentTime = 0;
+      audio.volume = SOUND_VOLUMES[kind] ?? 0.8;
+      void audio.play().catch(() => {});
+      return audio;
+    } catch (error) {
+      return null;
+    }
+  }
+
+  function playRollSound() {
+    playSound("roll");
+  }
+
+  function playResultBeep(success) {
+    playSound(success ? "success" : "failure");
+  }
+
+  function processEntrySounds(entries) {
+    const trimmed = entries.slice(-MAX_ENTRIES);
+    if (!soundHistoryPrimed) {
+      trimmed.forEach((entry) => rememberPlayedSoundId(getEntryId(entry)));
+      soundHistoryPrimed = true;
+      return;
+    }
+    const fresh = trimmed.filter((entry) => {
+      const id = getEntryId(entry);
+      return id && !playedSoundIds.has(id);
+    });
+    fresh.sort((a, b) => {
+      const tsDiff = (a?.ts || 0) - (b?.ts || 0);
+      if (tsDiff !== 0) return tsDiff;
+      const aPhase = a?.details?.event === "roll-start" ? 0 : 1;
+      const bPhase = b?.details?.event === "roll-start" ? 0 : 1;
+      return aPhase - bPhase;
+    });
+    fresh.forEach((entry) => {
+      const id = getEntryId(entry);
+      rememberPlayedSoundId(id);
+      const details = entry?.details;
+      if (!details || typeof details !== "object") return;
+      const eventType = String(details.event || "");
+      if (eventType === "roll-start") {
+        playRollSound();
+      } else if (eventType === "roll-result") {
+        if (details.success === true) playResultBeep(true);
+        if (details.success === false) playResultBeep(false);
+      } else if (eventType === "resource-change") {
+        const resource = String(details.resource || "").toUpperCase();
+        const action = String(details.action || "").toLowerCase();
+        if (resource === "HEALTH" && action === "damage") playSound("damage");
+        if (resource === "HEALTH" && action === "heal") playSound("heal");
+      }
+    });
+  }
 
   function getLogFromMetadata(metadata) {
     const raw = metadata?.[SHARED_LOG_KEY];
@@ -20,10 +181,116 @@
     return { entries };
   }
 
+  function getCombatStateFromMetadata(metadata) {
+    const raw = metadata?.[COMBAT_STATE_KEY];
+    if (typeof raw === "boolean") {
+      return { inCombat: raw, updatedAt: 0, updatedBy: "" };
+    }
+    if (!raw || typeof raw !== "object") {
+      return { inCombat: false, updatedAt: 0, updatedBy: "" };
+    }
+    return {
+      inCombat: raw.inCombat === true,
+      updatedAt: Number(raw.updatedAt) || 0,
+      updatedBy: String(raw.updatedBy || "").trim(),
+    };
+  }
+
+  function getCombatStateFromPlayers(players, fallbackMetadata) {
+    let latestState = null;
+    const safePlayers = Array.isArray(players) ? players : [];
+    safePlayers.forEach((player) => {
+      const state = getCombatStateFromMetadata(player?.metadata);
+      if (!latestState || state.updatedAt > latestState.updatedAt) {
+        latestState = state;
+      }
+    });
+    if (latestState && latestState.updatedAt > 0) return latestState;
+    return getCombatStateFromMetadata(fallbackMetadata);
+  }
+
   function formatTime(ts) {
     if (ts == null) return "";
     const d = new Date(ts);
     return d.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+  }
+
+  function getEntryTone(entry) {
+    const details = entry?.details;
+    if (!details || typeof details !== "object") return "";
+    const eventType = String(details.event || "");
+    if (eventType === "roll-result") {
+      const rolls = Array.isArray(details.rolls) ? details.rolls.map((value) => Number(value)) : [];
+      if (rolls.length === 2 && rolls[0] === 6 && rolls[1] === 6) return "critical";
+      if (rolls.length === 2 && rolls[0] === 1 && rolls[1] === 1) return "fumble";
+      if (details.success === true) return "success";
+      if (details.success === false) return "failure";
+      return "";
+    }
+    if (eventType === "resource-change") {
+      const action = String(details.action || "").toLowerCase();
+      if (action === "damage" || action === "spend") return "resource-loss";
+      if (action === "heal" || action === "restore") return "resource-gain";
+    }
+    return "";
+  }
+
+  function getInitiativeRollRows(entries) {
+    const byPlayer = new Map();
+    const safeEntries = Array.isArray(entries) ? entries : [];
+    safeEntries.forEach((entry) => {
+      const details = entry?.details;
+      if (!details || typeof details !== "object") return;
+      if (String(details.event || "") !== "initiative-result") return;
+      const score = Number(details.total);
+      if (!Number.isFinite(score)) return;
+      const playerId = String(entry?.playerId || "").trim();
+      const playerName = String(entry?.playerName || "Unknown").trim() || "Unknown";
+      const key = playerId || playerName.toLowerCase();
+      const ts = Number(entry?.ts) || 0;
+      const prev = byPlayer.get(key);
+      if (!prev || ts >= prev.ts) {
+        byPlayer.set(key, {
+          key,
+          playerId,
+          playerName,
+          score,
+          ts,
+        });
+      }
+    });
+    return Array.from(byPlayer.values()).sort((a, b) => {
+      if (b.score !== a.score) return b.score - a.score;
+      if (a.ts !== b.ts) return a.ts - b.ts;
+      return a.playerName.localeCompare(b.playerName);
+    });
+  }
+
+  function renderInitiativeTracker(entries) {
+    const listEl = document.querySelector('[data-role="initiative-list"]');
+    if (!listEl) return;
+    const rows = getInitiativeRollRows(entries);
+    listEl.innerHTML = "";
+    rows.forEach((row) => {
+      const item = document.createElement("div");
+      item.className = "initiative-item";
+      const left = document.createElement("div");
+      left.className = "initiative-item__left";
+      const name = document.createElement("div");
+      name.className = "initiative-item__name";
+      name.textContent = row.playerName;
+      const meta = document.createElement("div");
+      meta.className = "initiative-item__meta";
+      meta.textContent = formatTime(row.ts);
+      left.appendChild(name);
+      left.appendChild(meta);
+      const score = document.createElement("div");
+      score.className = "initiative-item__score";
+      score.textContent = String(row.score);
+      item.appendChild(left);
+      item.appendChild(score);
+      listEl.appendChild(item);
+    });
   }
 
   function renderEntries(entries) {
@@ -32,11 +299,15 @@
     if (!listEl) return;
 
     const trimmed = entries.slice(-MAX_ENTRIES);
+    processEntrySounds(trimmed);
+    renderInitiativeTracker(trimmed);
     listEl.innerHTML = "";
 
     trimmed.forEach((entry) => {
       const div = document.createElement("div");
       div.className = "log-entry";
+      const tone = getEntryTone(entry);
+      if (tone) div.classList.add(`log-entry--${tone}`);
       const meta = document.createElement("div");
       meta.className = "log-entry__meta";
       const who = [entry.playerName || "Someone", entry.role === "GM" ? " (GM)" : ""].join("");
@@ -120,14 +391,43 @@
   }
 
   function run() {
+    const panelEl = document.querySelector(".log-panel");
     const listEl = document.querySelector('[data-role="log-list"]');
     const emptyEl = document.querySelector('[data-role="log-empty"]');
     const debugEl = document.querySelector('[data-role="log-debug"]');
     const debugBodyEl = document.querySelector('[data-role="log-debug-body"]');
+    const combatToggleBtn = document.querySelector('[data-role="combat-toggle"]');
     const retryBtn = document.querySelector('[data-role="log-retry"]');
     const copyBtn = document.querySelector('[data-role="log-copy"]');
     const debugLines = [];
     let pollTimer = null;
+    let combatStateValue = false;
+    let combatStatePrimed = false;
+    let combatToggleBound = false;
+    let combatMetadataUnsubscribe = null;
+    let combatToggleInFlight = false;
+    bindAudioUnlockHandlers();
+
+    function renderCombatToggle(inCombat, options = {}) {
+      const { playSoundEffect = false, force = false, enabled = true } = options;
+      const nextInCombat = inCombat === true;
+      const changed = !combatStatePrimed || combatStateValue !== nextInCombat;
+      combatStateValue = nextInCombat;
+      combatStatePrimed = true;
+      panelEl?.classList.toggle("log-panel--combat", nextInCombat);
+      if (combatToggleBtn) {
+        combatToggleBtn.disabled = !enabled;
+        combatToggleBtn.dataset.state = nextInCombat ? "combat" : "peace";
+        combatToggleBtn.setAttribute("aria-pressed", String(nextInCombat));
+        combatToggleBtn.textContent = nextInCombat ? "🚨 Combat" : "🕊️ Peace";
+        combatToggleBtn.title = nextInCombat
+          ? "Combat is active for the whole room."
+          : "Out of combat for the whole room.";
+      }
+      if ((force || changed) && playSoundEffect) {
+        playSound(nextInCombat ? "combatOn" : "combatOff");
+      }
+    }
 
     function pushDebug(message, data) {
       const ts = new Date().toLocaleTimeString();
@@ -147,6 +447,38 @@
         console.error(LOG_PREFIX, message, details || "");
       }
       pushDebug(`ERROR: ${message}`, details);
+    }
+
+    let sharedObr = null;
+
+    async function refreshLogDisplay() {
+      let apiEntries = [];
+      if (LOG_API_ENABLED) {
+        try {
+          apiEntries = await fetchLogEntries();
+        } catch (error) {
+          pushError("Failed to fetch log entries.", error);
+        }
+      }
+      const OBR = sharedObr;
+      let roomEntries = [];
+      let playerEntries = [];
+      if (OBR?.room?.getMetadata) {
+        try {
+          roomEntries = await getRoomEntries(OBR);
+        } catch (error) {
+          pushError("Failed to read room log metadata.", error);
+        }
+      }
+      if (OBR?.party?.getPlayers) {
+        try {
+          playerEntries = await getPlayerEntries(OBR);
+        } catch (error) {
+          pushError("Failed to read player log metadata.", error);
+        }
+      }
+      const merged = mergeEntries([...apiEntries, ...roomEntries, ...playerEntries]).slice(-MAX_ENTRIES);
+      renderEntries(merged);
     }
 
     function setEmpty(msg) {
@@ -193,41 +525,127 @@
     async function handleReady(OBR) {
       try {
         readyFired = true;
+        sharedObr = OBR;
         pushDebug("OBR ready handler running.", formatDebugContext());
         if (!OBR.room?.getMetadata) {
           pushDebug("OBR.room.getMetadata not available.");
-          setEmpty("Owlbear Rodeo room not ready.");
+          renderCombatToggle(false, { enabled: false });
+          if (!LOG_API_ENABLED) setEmpty("Owlbear Rodeo room not ready.");
           return;
         }
 
-          await renderFromSources(OBR);
+        const syncCombatState = async () => {
+          const metadata = await OBR.room.getMetadata();
+          const players = OBR.party?.getPlayers ? await OBR.party.getPlayers() : [];
+          const combatState = getCombatStateFromPlayers(players, metadata);
+          renderCombatToggle(combatState.inCombat, { enabled: true });
+          return { metadata, players, combatState };
+        };
 
-          const unsubscribe = OBR.room.onMetadataChange?.(() => {
-            renderFromSources(OBR);
+        await syncCombatState();
+
+        if (!combatToggleBound && combatToggleBtn) {
+          combatToggleBound = true;
+          combatToggleBtn.addEventListener("click", async () => {
+            if (!OBR.player?.setMetadata) return;
+            if (combatToggleInFlight) return;
+            combatToggleInFlight = true;
+            let previousCombat = combatStateValue;
+            try {
+              const currentCombat = combatStatePrimed ? combatStateValue : (await syncCombatState()).combatState.inCombat;
+              const nextCombat = !currentCombat;
+              previousCombat = currentCombat;
+              let updatedBy = "";
+              if (typeof OBR.player?.getId === "function") {
+                try {
+                  updatedBy = String(await OBR.player.getId());
+                } catch (error) {
+                  updatedBy = "";
+                }
+              }
+              const playerMetadataUpdate = {
+                [COMBAT_STATE_KEY]: {
+                  inCombat: nextCombat,
+                  updatedAt: Date.now(),
+                  updatedBy,
+                },
+              };
+              // Update immediately so repeated clicks still behave like a true toggle.
+              renderCombatToggle(nextCombat, { playSoundEffect: true, enabled: true });
+              await OBR.player.setMetadata(playerMetadataUpdate);
+            } catch (error) {
+              // Revert optimistic state on failure.
+              renderCombatToggle(previousCombat, { enabled: true, force: true });
+              pushError("Failed to update combat state.", error);
+            } finally {
+              combatToggleInFlight = false;
+            }
           });
-        if (typeof unsubscribe === "function") {
-          window.addEventListener("beforeunload", unsubscribe);
         }
 
-          const unsubscribeParty = OBR.party?.onChange?.(() => {
-            renderFromSources(OBR);
+        if (!combatMetadataUnsubscribe && typeof OBR.room.onMetadataChange === "function") {
+          combatMetadataUnsubscribe = OBR.room.onMetadataChange((metadata) => {
+            if (OBR.party?.getPlayers) {
+              OBR.party.getPlayers()
+                .then((players) => {
+                  const combatState = getCombatStateFromPlayers(players, metadata);
+                  renderCombatToggle(combatState.inCombat, { playSoundEffect: true, enabled: true });
+                })
+                .catch((error) => {
+                  pushError("Failed to refresh combat state from room metadata change.", error);
+                });
+            }
+            void refreshLogDisplay();
           });
-          if (typeof unsubscribeParty === "function") {
-            window.addEventListener("beforeunload", unsubscribeParty);
+          if (typeof combatMetadataUnsubscribe === "function") {
+            window.addEventListener("beforeunload", combatMetadataUnsubscribe);
           }
+        }
+
+        await refreshLogDisplay();
+
+        const unsubscribeParty = OBR.party?.onChange?.(() => {
+          if (OBR.party?.getPlayers) {
+            OBR.party.getPlayers()
+              .then((players) => {
+                renderCombatToggle(getCombatStateFromPlayers(players).inCombat, { playSoundEffect: true, enabled: true });
+              })
+              .catch((error) => {
+                pushError("Failed to refresh party combat state.", error);
+              });
+          }
+          void refreshLogDisplay();
+        });
+        if (typeof unsubscribeParty === "function") {
+          window.addEventListener("beforeunload", unsubscribeParty);
+        }
 
         const clearBtn = document.querySelector('[data-role="log-clear"]');
         if (clearBtn) {
           clearBtn.addEventListener("click", async () => {
-            if (!OBR.room?.getMetadata || !OBR.room?.setMetadata) return;
-            const metadata = await OBR.room.getMetadata();
-            const next = { ...metadata, [SHARED_LOG_KEY]: { entries: [] } };
-            await OBR.room.setMetadata(next);
+            if (LOG_API_ENABLED) {
+              try {
+                await clearLogEntries();
+              } catch (error) {
+                pushError("Failed to clear log entries on server.", error);
+              }
+            }
+            if (OBR.room?.getMetadata && OBR.room?.setMetadata) {
+              try {
+                const metadata = await OBR.room.getMetadata();
+                const next = { ...metadata, [SHARED_LOG_KEY]: { entries: [] } };
+                await OBR.room.setMetadata(next);
+              } catch (error) {
+                pushError("Failed to clear room log metadata.", error);
+              }
+            }
+            await refreshLogDisplay();
           });
         }
       } catch (err) {
         pushError("OBR ready handler failed.", err);
-        setEmpty("Owlbear Rodeo not ready.");
+        renderCombatToggle(false, { enabled: false });
+        if (!LOG_API_ENABLED) setEmpty("Owlbear Rodeo not ready.");
       }
     }
 
@@ -283,22 +701,42 @@
       return false;
     }
 
-    if (LOG_API_ENABLED) {
-      pushDebug("Using log API.", { base: LOG_API_BASE });
-      const refreshFromApi = async () => {
-        try {
-          const entries = await fetchLogEntries();
-          renderEntries(entries.slice(-MAX_ENTRIES));
-        } catch (error) {
-          pushError("Failed to fetch log entries.", error);
+    function beginObrBootstrap(showWaitingState) {
+      if (tryRun()) return;
+      if (showWaitingState) setEmpty("Waiting for Owlbear Rodeo…");
+      pushDebug("Waiting for OBR SDK.", formatDebugContext());
+      attachSdkFallback();
+      const interval = setInterval(() => {
+        if (tryRun()) clearInterval(interval);
+      }, 150);
+      setTimeout(() => {
+        clearInterval(interval);
+        if (showWaitingState && !readyRegistered && emptyEl && emptyEl.textContent === "Waiting for Owlbear Rodeo…") {
+          setEmpty("Owlbear Rodeo not ready.");
+          pushDebug("OBR SDK not detected after timeout.", formatDebugContext());
+        } else if (readyRegistered && !readyFired) {
+          pushDebug("OBR SDK detected but onReady did not fire.", formatDebugContext());
         }
-      };
-      refreshFromApi();
-      pollTimer = window.setInterval(refreshFromApi, 2000);
+      }, 10000);
       if (retryBtn) {
         retryBtn.addEventListener("click", () => {
           pushDebug("Manual retry requested.");
-          refreshFromApi();
+          attachSdkFallback();
+          tryRun();
+        });
+      }
+    }
+
+    if (LOG_API_ENABLED) {
+      pushDebug("Using log API (merged with room metadata).", { base: LOG_API_BASE });
+      void refreshLogDisplay();
+      pollTimer = window.setInterval(() => {
+        void refreshLogDisplay();
+      }, LOG_POLL_INTERVAL_MS);
+      if (retryBtn) {
+        retryBtn.addEventListener("click", () => {
+          pushDebug("Manual retry requested.");
+          void refreshLogDisplay();
         });
       }
       if (copyBtn) {
@@ -306,45 +744,11 @@
           copyDebug();
         });
       }
-      const clearBtn = document.querySelector('[data-role="log-clear"]');
-      if (clearBtn) {
-        clearBtn.addEventListener("click", async () => {
-          try {
-            await clearLogEntries();
-            await refreshFromApi();
-          } catch (error) {
-            pushError("Failed to clear log entries.", error);
-          }
-        });
-      }
+      beginObrBootstrap(false);
       return;
     }
 
-    if (tryRun()) return;
-    setEmpty("Waiting for Owlbear Rodeo…");
-    pushDebug("Waiting for OBR SDK.", formatDebugContext());
-    attachSdkFallback();
-    const interval = setInterval(() => {
-      if (tryRun()) clearInterval(interval);
-    }, 150);
-    setTimeout(() => {
-      clearInterval(interval);
-      // Only show "not ready" when the SDK was never available (e.g. not in OBR or script failed)
-      if (!readyRegistered && emptyEl && emptyEl.textContent === "Waiting for Owlbear Rodeo…") {
-        setEmpty("Owlbear Rodeo not ready.");
-        pushDebug("OBR SDK not detected after timeout.", formatDebugContext());
-      } else if (readyRegistered && !readyFired) {
-        pushDebug("OBR SDK detected but onReady did not fire.", formatDebugContext());
-      }
-    }, 10000);
-
-    if (retryBtn) {
-      retryBtn.addEventListener("click", () => {
-        pushDebug("Manual retry requested.");
-        attachSdkFallback();
-        tryRun();
-      });
-    }
+    beginObrBootstrap(true);
 
     async function copyDebug() {
       if (debugLines.length === 0) return;

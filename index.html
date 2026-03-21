@@ -13,11 +13,21 @@
         <h1 class="log-title">📜 Shared Log</h1>
         <p class="log-hint">Loggable actions from everyone in the room appear here.</p>
         <div class="log-actions">
+          <button type="button" class="log-button log-button--toggle" data-role="combat-toggle" data-state="peace" aria-pressed="false" title="Out of combat for the whole room. Click to switch to combat." disabled>🕊️ Out of Combat</button>
           <button type="button" class="log-button" data-role="log-clear" title="Clear all entries">Clear</button>
         </div>
       </header>
-      <div class="log-list" data-role="log-list"></div>
-      <div class="log-empty" data-role="log-empty">No entries yet.</div>
+      <div class="log-content" data-role="log-content">
+        <section class="log-column log-column--log">
+          <div class="log-list" data-role="log-list"></div>
+          <div class="log-empty" data-role="log-empty">No entries yet.</div>
+        </section>
+        <aside class="initiative-panel" data-role="initiative-panel" hidden>
+          <div class="initiative-panel__header">⚡ Initiative</div>
+          <div class="initiative-panel__list" data-role="initiative-list"></div>
+          <div class="initiative-panel__empty" data-role="initiative-empty">No initiative rolls yet.</div>
+        </aside>
+      </div>
       <section class="log-debug" data-role="log-debug">
         <div class="log-debug__header">
           <strong>Debug</strong>
@@ -30,6 +40,6 @@
       </section>
     </main>
     <script src="./obr-sdk.js?v=4"></script>
-    <script src="./main.js?v=10"></script>
+    <script src="./main.js?v=22"></script>
   </body>
 </html>
