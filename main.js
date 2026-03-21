@@ -2,12 +2,14 @@
  * AFF Shared Log – Owlbear Rodeo extension
  * Displays room-wide log entries written by AFF Star Trek and other extensions.
  * Protocol: room metadata key SHARED_LOG_KEY = { entries: [ { id, ts, playerId, playerName, role?, source?, text, details? } ] }
+ * Room dice: SHARED_DICE_KEY = { id, ts, playerId, playerName, dice, values, label? } (delapouite dice-six-faces PNGs).
  */
 
 (function () {
   const SHARED_LOG_KEY = "affSharedLog";
   const SHARED_LOG_PLAYER_KEY = "affSharedLogPlayer";
   const COMBAT_STATE_KEY = "affSharedCombatState";
+  const SHARED_DICE_KEY = "affSharedDice";
   const MAX_ENTRIES = 300;
   const LOG_PREFIX = "[AFF Shared Log]";
   const MAX_DEBUG_LINES = 200;
@@ -35,6 +37,13 @@
   const LOG_API_ENABLED = LOG_API_BASE !== "off";
   const MAX_TRACKED_SOUND_IDS = 2000;
   const LOG_POLL_INTERVAL_MS = 250;
+  const DICE_SIX_FACE_WORDS = ["one", "two", "three", "four", "five", "six"];
+  const DICE_SIX_FACE_SRCS = DICE_SIX_FACE_WORDS.map(
+    (w) => `./images/game-icons/delapouite/dice-six-faces-${w}.png`,
+  );
+  const DICE_FACE_CHARS = ["\u2680", "\u2681", "\u2682", "\u2683", "\u2684", "\u2685"];
+  const ROLL_ANIMATION_MS = 1700;
+  const ROLL_ANIMATION_STEP_MS = 70;
   const SOUND_PATHS = {
     roll: "./audio/dice-roll.mp3",
     success: "./audio/tos_keypress2.mp3",
@@ -157,6 +166,158 @@
 
   function playResultBeep(success) {
     playSound(success ? "success" : "failure");
+  }
+
+  function delayMs(ms) {
+    return new Promise((resolve) => {
+      window.setTimeout(resolve, ms);
+    });
+  }
+
+  /**
+   * Room-synced d6 animation (game-icons delapouite dice-six-faces-*).
+   * @param {(msg: string, err: unknown) => void} reportError
+   */
+  function createSharedDiceAnimator(dieAEl, dieBEl, imgA, imgB, captionEl, reportError) {
+    let lastProcessedDiceId = null;
+    let animationChain = Promise.resolve();
+
+    function setDieFace(dieEl, imgEl, value, inactive) {
+      if (!(dieEl instanceof HTMLElement)) return;
+      const n = Number.isFinite(Number(value)) ? Math.min(6, Math.max(1, Number(value))) : 1;
+      const src = DICE_SIX_FACE_SRCS[n - 1];
+      if (imgEl instanceof HTMLImageElement && src) {
+        dieEl.textContent = "";
+        if (!imgEl.parentElement) dieEl.appendChild(imgEl);
+        imgEl.src = src;
+        imgEl.alt = `d6 ${n}`;
+        imgEl.hidden = false;
+      } else {
+        if (imgEl instanceof HTMLImageElement) imgEl.hidden = true;
+        dieEl.textContent = DICE_FACE_CHARS[n - 1] || DICE_FACE_CHARS[0];
+      }
+      dieEl.classList.toggle("shared-die--inactive", Boolean(inactive));
+    }
+
+    function normalizeDicePayload(payload) {
+      if (!payload || typeof payload !== "object") return null;
+      const diceCount = payload.dice === "1d6" ? 1 : 2;
+      const raw = Array.isArray(payload.values) ? payload.values : [];
+      const nums = raw.map((v) => {
+        const n = Number(v);
+        return Number.isFinite(n) ? Math.min(6, Math.max(1, Math.round(n))) : 1;
+      });
+      if (nums.length === 0) return null;
+      const finalA = nums[0];
+      const finalB = diceCount >= 2 ? (nums[1] ?? finalA) : 1;
+      return { diceCount, finalA, finalB };
+    }
+
+    async function runFaceAnimation(finalRolls, diceCount) {
+      if (!(dieAEl instanceof HTMLElement) || !(dieBEl instanceof HTMLElement)) return;
+      dieAEl.classList.add("is-rolling");
+      dieBEl.classList.add("is-rolling");
+      dieAEl.classList.remove("shared-die--inactive");
+      dieBEl.classList.remove("shared-die--inactive");
+      const steps = Math.max(1, Math.floor(ROLL_ANIMATION_MS / ROLL_ANIMATION_STEP_MS));
+      for (let i = 0; i < steps; i += 1) {
+        const faceA = (i % 6) + 1;
+        const faceB = ((i + 2) % 6) + 1;
+        setDieFace(dieAEl, imgA, faceA, false);
+        setDieFace(dieBEl, imgB, faceB, diceCount < 2);
+        await delayMs(ROLL_ANIMATION_STEP_MS);
+      }
+      const fA = Number(finalRolls?.[0] ?? 1);
+      const fB = Number(finalRolls?.[1] ?? 1);
+      setDieFace(dieAEl, imgA, fA, false);
+      setDieFace(dieBEl, imgB, fB, diceCount < 2);
+      dieAEl.classList.remove("is-rolling");
+      dieBEl.classList.remove("is-rolling");
+    }
+
+    async function playDicePayloadInternal(payload, { force = false } = {}) {
+      if (!payload || typeof payload !== "object") return;
+      const id = String(payload.id || "");
+      if (!id) return;
+      if (!force && id === lastProcessedDiceId) return;
+      lastProcessedDiceId = id;
+      const norm = normalizeDicePayload(payload);
+      if (!norm) return;
+      const { diceCount, finalA, finalB } = norm;
+      await runFaceAnimation([finalA, finalB], diceCount);
+      const who = String(payload.playerName || "Someone").trim() || "Someone";
+      const diceLabel = diceCount >= 2 ? "2d6" : "1d6";
+      const sum = diceCount >= 2 ? finalA + finalB : finalA;
+      const detail = diceCount >= 2 ? `${finalA} + ${finalB} = ${sum}` : `${finalA}`;
+      const lab = String(payload.label || "").trim();
+      if (captionEl instanceof HTMLElement) {
+        captionEl.textContent = lab ? `${who} · ${diceLabel} → ${detail} · ${lab}` : `${who} · ${diceLabel} → ${detail}`;
+      }
+    }
+
+    function primeFromMetadataPayload(payload) {
+      if (payload && payload.id) lastProcessedDiceId = String(payload.id);
+    }
+
+    function onRoomMetadataDice(metadata) {
+      const payload = metadata?.[SHARED_DICE_KEY];
+      if (!payload || typeof payload !== "object") return;
+      animationChain = animationChain.then(() => playDicePayloadInternal(payload, { force: false }));
+    }
+
+    async function publishLocalRoll(OBR, { diceCount, values, label = "" }) {
+      if (!OBR?.room?.setMetadata) {
+        if (typeof reportError === "function") reportError("Cannot roll: room metadata not available.", new Error("no room"));
+        return;
+      }
+      let playerId = "";
+      let playerName = "Player";
+      if (OBR.player?.getId) {
+        try {
+          playerId = String((await OBR.player.getId()) || "");
+        } catch {
+          playerId = "";
+        }
+      }
+      if (OBR.player?.getName) {
+        try {
+          playerName = String((await OBR.player.getName()) || "").trim() || playerName;
+        } catch {
+          playerName = "Player";
+        }
+      }
+      const id =
+        (window.crypto?.randomUUID && window.crypto.randomUUID()) ||
+        `dice-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+      const v0 = Math.min(6, Math.max(1, Number(values?.[0]) || 1));
+      const v1 = Math.min(6, Math.max(1, Number(values?.[1]) || v0));
+      const payload = {
+        id,
+        ts: Date.now(),
+        playerId: playerId || "unknown-player",
+        playerName,
+        dice: diceCount >= 2 ? "2d6" : "1d6",
+        values: diceCount >= 2 ? [v0, v1] : [v0],
+        label: String(label || "").trim().slice(0, 140),
+      };
+      playSound("roll");
+      await playDicePayloadInternal(payload, { force: true });
+      try {
+        await OBR.room.setMetadata({ [SHARED_DICE_KEY]: payload });
+      } catch (error) {
+        if (typeof reportError === "function") reportError("Failed to broadcast dice roll to room.", error);
+      }
+    }
+
+    return {
+      primeFromMetadataPayload,
+      onRoomMetadataDice,
+      publishLocalRoll,
+      resetIdleFaces() {
+        setDieFace(dieAEl, imgA, 1, false);
+        setDieFace(dieBEl, imgB, 1, true);
+      },
+    };
   }
 
   function processEntrySounds(entries) {
@@ -442,8 +603,18 @@
     const panelEl = document.querySelector(".log-panel");
     const listEl = document.querySelector('[data-role="log-list"]');
     const emptyEl = document.querySelector('[data-role="log-empty"]');
-    const debugEl = document.querySelector('[data-role="log-debug"]');
     const debugBodyEl = document.querySelector('[data-role="log-debug-body"]');
+    const tabDice = document.querySelector('[data-role="tab-dice"]');
+    const tabDebug = document.querySelector('[data-role="tab-debug"]');
+    const panelDice = document.querySelector('[data-role="panel-dice"]');
+    const panelDebug = document.querySelector('[data-role="panel-debug"]');
+    const sharedDieA = document.querySelector('[data-role="shared-die-a"]');
+    const sharedDieB = document.querySelector('[data-role="shared-die-b"]');
+    const sharedDieImgA = document.querySelector('[data-role="shared-die-img-a"]');
+    const sharedDieImgB = document.querySelector('[data-role="shared-die-img-b"]');
+    const sharedDiceCaption = document.querySelector('[data-role="shared-dice-caption"]');
+    const sharedRoll2d6 = document.querySelector('[data-role="shared-roll-2d6"]');
+    const sharedRoll1d6 = document.querySelector('[data-role="shared-roll-1d6"]');
     const combatToggleBtn = document.querySelector('[data-role="combat-toggle"]');
     const retryBtn = document.querySelector('[data-role="log-retry"]');
     const copyBtn = document.querySelector('[data-role="log-copy"]');
@@ -456,6 +627,19 @@
     let sceneLogUnsubscribe = null;
     let combatToggleInFlight = false;
     bindAudioUnlockHandlers();
+
+    function selectBottomTab(which) {
+      const isDice = which === "dice";
+      tabDice?.classList.toggle("log-bottom__tab--active", isDice);
+      tabDice?.setAttribute("aria-selected", String(isDice));
+      tabDebug?.classList.toggle("log-bottom__tab--active", !isDice);
+      tabDebug?.setAttribute("aria-selected", String(!isDice));
+      if (panelDice) panelDice.hidden = !isDice;
+      if (panelDebug) panelDebug.hidden = isDice;
+    }
+    tabDice?.addEventListener("click", () => selectBottomTab("dice"));
+    tabDebug?.addEventListener("click", () => selectBottomTab("debug"));
+    selectBottomTab("dice");
 
     function renderCombatToggle(inCombat, options = {}) {
       const { playSoundEffect = false, force = false, enabled = true } = options;
@@ -484,7 +668,6 @@
       debugLines.push(line);
       if (debugLines.length > MAX_DEBUG_LINES) debugLines.shift();
       if (debugBodyEl) debugBodyEl.textContent = debugLines.join("\n");
-      if (debugEl) debugEl.style.display = "flex";
       if (console && typeof console.log === "function") {
         console.log(LOG_PREFIX, message, data || "");
       }
@@ -497,6 +680,16 @@
       }
       pushDebug(`ERROR: ${message}`, details);
     }
+
+    const diceAnimator = createSharedDiceAnimator(
+      sharedDieA,
+      sharedDieB,
+      sharedDieImgA,
+      sharedDieImgB,
+      sharedDiceCaption,
+      (msg, err) => pushError(msg, err),
+    );
+    diceAnimator.resetIdleFaces();
 
     let sharedObr = null;
 
@@ -599,7 +792,12 @@
           return { metadata, players, combatState };
         };
 
-        await syncCombatState();
+        const { metadata: initialRoomMeta } = await syncCombatState();
+        try {
+          diceAnimator.primeFromMetadataPayload(initialRoomMeta?.[SHARED_DICE_KEY]);
+        } catch {
+          /* ignore */
+        }
 
         if (!combatToggleBound && combatToggleBtn) {
           combatToggleBound = true;
@@ -642,6 +840,7 @@
 
         if (!combatMetadataUnsubscribe && typeof OBR.room.onMetadataChange === "function") {
           combatMetadataUnsubscribe = OBR.room.onMetadataChange((metadata) => {
+            diceAnimator.onRoomMetadataDice(metadata);
             if (OBR.party?.getPlayers) {
               OBR.party.getPlayers()
                 .then((players) => {
@@ -725,6 +924,22 @@
               }
             }
             await refreshLogDisplay();
+          });
+        }
+
+        const rollD6Local = () => Math.floor(Math.random() * 6) + 1;
+        if (sharedRoll2d6) {
+          sharedRoll2d6.addEventListener("click", () => {
+            void diceAnimator.publishLocalRoll(OBR, {
+              diceCount: 2,
+              values: [rollD6Local(), rollD6Local()],
+              label: "Shared Log",
+            });
+          });
+        }
+        if (sharedRoll1d6) {
+          sharedRoll1d6.addEventListener("click", () => {
+            void diceAnimator.publishLocalRoll(OBR, { diceCount: 1, values: [rollD6Local()], label: "Shared Log" });
           });
         }
       } catch (err) {
