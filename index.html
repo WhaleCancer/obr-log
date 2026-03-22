@@ -11,7 +11,9 @@
     <main class="log-panel">
       <header class="log-header">
         <h1 class="log-title">📜 Shared Log</h1>
-        <p class="log-hint">Loggable actions from everyone in the room appear here.</p>
+        <p class="log-hint">
+          Rolls and sheet actions from everyone appear here. The list scrolls to the newest line when something new arrives. Use the box at the bottom to add your own note (Ctrl+Enter to send).
+        </p>
         <div class="log-actions">
           <button type="button" class="log-button log-button--toggle" data-role="combat-toggle" data-state="peace" aria-pressed="false" title="Out of combat for the whole room. Click to switch to combat." disabled>🕊️ Out of Combat</button>
           <button type="button" class="log-button" data-role="log-clear" title="Clear all entries">Clear</button>
@@ -21,6 +23,23 @@
         <section class="log-column log-column--log">
           <div class="log-list" data-role="log-list"></div>
           <div class="log-empty" data-role="log-empty">No entries yet.</div>
+          <footer class="log-manual-footer" data-role="log-manual-footer">
+            <label class="log-manual-label" for="log-manual-input">Add a note to the log</label>
+            <div class="log-manual-row">
+              <textarea
+                id="log-manual-input"
+                class="log-manual-input"
+                data-role="log-manual-input"
+                rows="2"
+                maxlength="2000"
+                placeholder="Visible to everyone in the room. Uses your claimed token portrait from the sheet (if any). Ctrl+Enter to send."
+                aria-label="Manual log message"
+              ></textarea>
+              <button type="button" class="log-button log-manual-send" data-role="log-manual-send" title="Send to shared log">
+                Send
+              </button>
+            </div>
+          </footer>
         </section>
         <aside class="initiative-panel" data-role="initiative-panel" hidden>
           <div class="initiative-panel__header">⚡ Initiative</div>
@@ -30,6 +49,6 @@
       </div>
     </main>
     <script src="./obr-sdk.js?v=4"></script>
-    <script src="./main.js?v=39"></script>
+    <script src="./main.js?v=43"></script>
   </body>
 </html>

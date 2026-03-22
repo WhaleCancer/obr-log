@@ -61,6 +61,11 @@ body {
   flex-direction: column;
 }
 
+/* Let the log list shrink inside flex/grid so overflow-y applies here (not the iframe body). */
+.log-column.log-column--log {
+  min-width: 0;
+}
+
 .log-button {
   padding: 0.35rem 0.65rem;
   border: 1px solid rgba(255, 255, 255, 0.2);
@@ -103,7 +108,9 @@ body {
 
 .log-list {
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
+  overflow-x: hidden;
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
@@ -217,6 +224,60 @@ body {
 
 .log-list:not(:empty) + .log-empty {
   display: none;
+}
+
+.log-manual-footer {
+  flex-shrink: 0;
+  margin-top: 0.5rem;
+  padding-top: 0.55rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.log-manual-label {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.5);
+  margin-bottom: 0.35rem;
+}
+
+.log-manual-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.45rem;
+}
+
+.log-manual-input {
+  flex: 1;
+  min-width: 0;
+  min-height: 2.5rem;
+  resize: vertical;
+  padding: 0.4rem 0.5rem;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(0, 0, 0, 0.25);
+  color: #f2f2f2;
+  font-size: 0.85rem;
+  font-family: inherit;
+  line-height: 1.35;
+}
+
+.log-manual-input::placeholder {
+  color: rgba(255, 255, 255, 0.35);
+}
+
+.log-manual-input:focus {
+  outline: none;
+  border-color: rgba(126, 200, 255, 0.55);
+  box-shadow: 0 0 0 1px rgba(126, 200, 255, 0.25);
+}
+
+.log-manual-send {
+  flex-shrink: 0;
+  align-self: stretch;
+  min-height: 2.5rem;
 }
 
 .initiative-panel {

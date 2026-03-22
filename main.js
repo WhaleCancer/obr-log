@@ -34,6 +34,8 @@
   const LOG_API_ENABLED = LOG_API_BASE !== "off";
   const MAX_TRACKED_SOUND_IDS = 2000;
   const LOG_POLL_INTERVAL_MS = 250;
+  /** Room metadata map written by AFF Star Trek: playerId → claimed scene token id (for manual log portraits). */
+  const CLAIMED_TOKENS_METADATA_KEY = "aff-star-trek/claimedTokensByPlayer";
   const SOUND_PATHS = {
     roll: "./audio/dice-roll.mp3",
     success: "./audio/tos_keypress2.mp3",
@@ -56,6 +58,8 @@
   const playedSoundIds = new Set();
   const soundElements = new Map();
   let audioUnlockBound = false;
+  /** Last rendered log tail (id|ts); used to detect new lines and auto-scroll. */
+  let renderEntriesPrevTailSig = "";
 
   function getEntryId(entry) {
     if (!entry || typeof entry !== "object") return "";
@@ -315,12 +319,50 @@
     });
   }
 
+  /** Treat as "at bottom" if within this many px (sticky-follow new lines). */
+  const LOG_LIST_STICKY_BOTTOM_THRESHOLD_PX = 48;
+
+  function isSharedLogScrolledToBottom(listEl) {
+    if (!(listEl instanceof Element)) return true;
+    const { scrollTop, scrollHeight, clientHeight } = listEl;
+    if (scrollHeight <= clientHeight + 1) return true;
+    return scrollHeight - scrollTop - clientHeight <= LOG_LIST_STICKY_BOTTOM_THRESHOLD_PX;
+  }
+
+  function scrollSharedLogListToBottom(listEl) {
+    if (!(listEl instanceof Element)) return;
+    const run = () => {
+      listEl.scrollTop = listEl.scrollHeight;
+      const last = listEl.lastElementChild;
+      if (last && typeof last.scrollIntoView === "function") {
+        try {
+          last.scrollIntoView({ block: "end", behavior: "auto" });
+        } catch {
+          /* ignore */
+        }
+      }
+    };
+    requestAnimationFrame(() => {
+      run();
+      requestAnimationFrame(run);
+    });
+  }
+
   function renderEntries(entries) {
     const listEl = document.querySelector('[data-role="log-list"]');
     const emptyEl = document.querySelector('[data-role="log-empty"]');
     if (!listEl) return;
 
     const trimmed = entries.slice(-MAX_ENTRIES);
+    const lastEntry = trimmed.length > 0 ? trimmed[trimmed.length - 1] : null;
+    const newTailSig = lastEntry ? `${getEntryId(lastEntry)}|${lastEntry.ts || 0}` : "";
+    const hasNewTail = newTailSig !== renderEntriesPrevTailSig;
+
+    const oldScrollTop = listEl.scrollTop;
+    const oldScrollHeight = listEl.scrollHeight;
+    const oldClientHeight = listEl.clientHeight;
+    const stickToBottom = isSharedLogScrolledToBottom(listEl);
+
     processEntrySounds(trimmed);
     renderInitiativeTracker(trimmed);
     listEl.innerHTML = "";
@@ -363,6 +405,26 @@
     if (emptyEl) {
       emptyEl.style.display = trimmed.length === 0 ? "flex" : "none";
     }
+
+    renderEntriesPrevTailSig = newTailSig;
+
+    if (trimmed.length === 0) return;
+
+    // New line at the end → jump to newest (user request). Otherwise preserve reading position
+    // across full re-renders, or stay pinned when already at the bottom.
+    if (hasNewTail || stickToBottom) {
+      scrollSharedLogListToBottom(listEl);
+      const lastRow = listEl.lastElementChild;
+      const lastAvatar = lastRow?.querySelector?.("img.log-entry__avatar");
+      if (lastAvatar instanceof HTMLImageElement && !lastAvatar.complete) {
+        lastAvatar.addEventListener("load", () => scrollSharedLogListToBottom(listEl), { once: true });
+      }
+    } else if (oldScrollHeight > oldClientHeight + 1) {
+      const oldMax = oldScrollHeight - oldClientHeight;
+      const ratio = oldMax > 0 ? oldScrollTop / oldMax : 0;
+      const newMax = listEl.scrollHeight - listEl.clientHeight;
+      listEl.scrollTop = Math.max(0, Math.min(newMax, ratio * newMax));
+    }
   }
 
   function mergeEntries(allEntries) {
@@ -382,6 +444,33 @@
       map.set(id, merged);
     });
     return Array.from(map.values()).sort((a, b) => (a.ts || 0) - (b.ts || 0));
+  }
+
+  /**
+   * Drop "rolling…" lines when a finished roll with the same details.rollEventId exists.
+   * Covers log-API races (POST after DELETE) and duplicate copies across room/player/API merge.
+   */
+  function filterSupersededRollStarts(entries) {
+    if (!Array.isArray(entries) || entries.length === 0) return entries;
+    const concluded = new Set();
+    entries.forEach((entry) => {
+      const d = entry?.details;
+      if (!d || typeof d !== "object") return;
+      const rid = String(d.rollEventId || "").trim();
+      if (!rid) return;
+      const ev = d.event;
+      if (ev === "roll-result" || ev === "initiative-result") {
+        concluded.add(rid);
+      }
+    });
+    return entries.filter((entry) => {
+      const d = entry?.details;
+      if (!d || typeof d !== "object") return true;
+      const rid = String(d.rollEventId || "").trim();
+      if (!rid) return true;
+      if (d.event === "roll-start" && concluded.has(rid)) return false;
+      return true;
+    });
   }
 
   async function getRoomEntries(OBR) {
@@ -432,7 +521,9 @@
     const roomEntries = await getRoomEntries(OBR);
     const playerEntries = await getPlayerEntries(OBR);
     const sceneEntries = await getSceneLogEntries(OBR);
-    const merged = mergeEntries([...roomEntries, ...playerEntries, ...sceneEntries]).slice(-MAX_ENTRIES);
+    const merged = filterSupersededRollStarts(
+      mergeEntries([...roomEntries, ...playerEntries, ...sceneEntries]).slice(-MAX_ENTRIES)
+    );
     renderEntries(merged);
   }
 
@@ -519,11 +610,161 @@
           console.error(LOG_PREFIX, "Failed to read scene log metadata.", error);
         }
       }
-      const merged = mergeEntries([...apiEntries, ...roomEntries, ...playerEntries, ...sceneEntries]).slice(-MAX_ENTRIES);
+      const merged = filterSupersededRollStarts(
+        mergeEntries([...apiEntries, ...roomEntries, ...playerEntries, ...sceneEntries]).slice(-MAX_ENTRIES)
+      );
       renderEntries(merged);
     }
 
+    function newManualLogEntryId() {
+      try {
+        if (globalThis.crypto?.randomUUID) return globalThis.crypto.randomUUID();
+      } catch (_) {}
+      return `log-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+    }
+
+    function getSceneItemImageUrlForLog(item) {
+      if (!item || typeof item !== "object") return "";
+      const image = item.image;
+      if (typeof image === "string" && image.trim()) return image.trim();
+      if (image && typeof image === "object") {
+        if (typeof image.url === "string" && image.url.trim()) return image.url.trim();
+        if (typeof image.src === "string" && image.src.trim()) return image.src.trim();
+        if (typeof image.path === "string" && image.path.trim()) return image.path.trim();
+      }
+      return "";
+    }
+
+    async function resolveClaimedTokenAvatarUrl(OBR) {
+      try {
+        const self = OBR.player?.getSelf ? await OBR.player.getSelf() : null;
+        const playerId = String(self?.id || "").trim();
+        if (!playerId || !OBR.room?.getMetadata) return "";
+        const metadata = await OBR.room.getMetadata();
+        const map = metadata?.[CLAIMED_TOKENS_METADATA_KEY];
+        if (!map || typeof map !== "object" || Array.isArray(map)) return "";
+        const tokenId = String(map[playerId] || "").trim();
+        if (!tokenId || !OBR.scene?.items?.getItems) return "";
+        const items = await OBR.scene.items.getItems([tokenId]);
+        const item = Array.isArray(items) ? items[0] : null;
+        return getSceneItemImageUrlForLog(item);
+      } catch (_) {
+        return "";
+      }
+    }
+
+    async function postManualEntryToLogApi(entry) {
+      if (!LOG_API_ENABLED) return;
+      try {
+        const response = await fetch(`${LOG_API_BASE}/logs`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(entry),
+        });
+        if (!response.ok) {
+          console.warn(LOG_PREFIX, "Manual note: log API POST failed.", response.status);
+        }
+      } catch (error) {
+        console.warn(LOG_PREFIX, "Manual note: log API POST error.", error);
+      }
+    }
+
+    async function appendManualSharedLogNote(OBR, rawText) {
+      const text = String(rawText || "").trim();
+      if (!text) return false;
+      let self = null;
+      try {
+        self = OBR.player?.getSelf ? await OBR.player.getSelf() : null;
+      } catch (_) {}
+      const playerId = String(self?.id || "").trim() || "unknown-player";
+      const playerName = String(self?.name || "").trim() || "Someone";
+      const role = self?.role ?? null;
+      const avatarUrl = await resolveClaimedTokenAvatarUrl(OBR);
+      const entry = {
+        id: newManualLogEntryId(),
+        ts: Date.now(),
+        playerId,
+        playerName,
+        role,
+        source: "AFF Shared Log · Manual",
+        text,
+        details: { type: "manualNote" },
+      };
+      if (avatarUrl) entry.avatarUrl = avatarUrl;
+
+      let anySuccess = false;
+      if (OBR.room?.getMetadata && OBR.room?.setMetadata) {
+        try {
+          const metadata = (await OBR.room.getMetadata()) || {};
+          const rawLog = metadata[SHARED_LOG_KEY];
+          const existing = Array.isArray(rawLog?.entries) ? rawLog.entries : [];
+          const nextEntries = [...existing, entry].slice(-MAX_ENTRIES);
+          await OBR.room.setMetadata({ [SHARED_LOG_KEY]: { entries: nextEntries } });
+          anySuccess = true;
+        } catch (error) {
+          console.warn(LOG_PREFIX, "Manual note: room write failed.", error);
+        }
+      }
+      if (OBR.player?.getMetadata && OBR.player?.setMetadata) {
+        try {
+          const playerMeta = (await OBR.player.getMetadata()) || {};
+          const rawPlayer = playerMeta[SHARED_LOG_PLAYER_KEY];
+          const existingPlayer = Array.isArray(rawPlayer?.entries) ? rawPlayer.entries : [];
+          const nextPlayerEntries = [...existingPlayer, entry].slice(-MAX_ENTRIES);
+          await OBR.player.setMetadata({ [SHARED_LOG_PLAYER_KEY]: { entries: nextPlayerEntries } });
+          anySuccess = true;
+        } catch (error) {
+          console.warn(LOG_PREFIX, "Manual note: player write failed.", error);
+        }
+      }
+      if (OBR.scene?.getMetadata && OBR.scene?.setMetadata) {
+        try {
+          const sceneMeta = (await OBR.scene.getMetadata()) || {};
+          const rawScene = sceneMeta[SHARED_LOG_KEY];
+          const existingScene = Array.isArray(rawScene?.entries) ? rawScene.entries : [];
+          const nextScene = [...existingScene, entry].slice(-MAX_ENTRIES);
+          await OBR.scene.setMetadata({ [SHARED_LOG_KEY]: { entries: nextScene } });
+          anySuccess = true;
+        } catch (error) {
+          console.warn(LOG_PREFIX, "Manual note: scene write failed.", error);
+        }
+      }
+      void postManualEntryToLogApi(entry);
+      void refreshLogDisplay();
+      return anySuccess;
+    }
+
+    let manualLogComposerBound = false;
+    function bindManualLogComposer() {
+      if (manualLogComposerBound) return;
+      manualLogComposerBound = true;
+      const manualInput = document.querySelector('[data-role="log-manual-input"]');
+      const manualSend = document.querySelector('[data-role="log-manual-send"]');
+      const submitManualNote = async () => {
+        const OBR = sharedObr;
+        if (!(manualInput instanceof HTMLTextAreaElement) || !OBR) return;
+        const note = manualInput.value;
+        const ok = await appendManualSharedLogNote(OBR, note);
+        if (ok) manualInput.value = "";
+      };
+      if (manualSend) {
+        manualSend.addEventListener("click", () => {
+          void submitManualNote();
+        });
+      }
+      if (manualInput instanceof HTMLTextAreaElement) {
+        manualInput.addEventListener("keydown", (e) => {
+          if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
+            e.preventDefault();
+            void submitManualNote();
+          }
+        });
+      }
+    }
+    bindManualLogComposer();
+
     function setEmpty(msg) {
+      renderEntriesPrevTailSig = "";
       if (listEl) listEl.innerHTML = "";
       if (emptyEl) emptyEl.textContent = msg || "No entries yet.";
       if (emptyEl) emptyEl.style.display = "flex";
